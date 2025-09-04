@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/dosgo/libopus/opus"
 	"crypto/md5"
 	"encoding/binary"
 	"encoding/hex"
@@ -11,6 +10,8 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"time"
+
+	"github.com/dosgo/libopus/opus"
 )
 
 func main() {
@@ -20,6 +21,12 @@ func main() {
 	test()
 }
 func test() {
+	//Avoid panic
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Errorf("decode panic: %v", r)
+		}
+	}()
 	encoder, err := opus.NewOpusEncoder(48000, 2, opus.OPUS_APPLICATION_AUDIO)
 	encoder.SetBitrate(96000)
 	encoder.SetForceMode(opus.MODE_SILK_ONLY)
