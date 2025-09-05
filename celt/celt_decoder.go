@@ -96,7 +96,7 @@ func (this *CeltDecoder) Celt_decoder_init(sampling_rate int, channels int) int 
 	if ret != OpusError.OPUS_OK {
 		return ret
 	}
-	this.downsample = resampling_factor(sampling_rate)
+	this.downsample = Resampling_factor(sampling_rate)
 	if this.downsample == 0 {
 		return OpusError.OPUS_BAD_ARG
 	}

@@ -4,13 +4,14 @@ import (
 	"errors"
 
 	"github.com/dosgo/libopus/celt"
+	"github.com/dosgo/libopus/opusConstants"
 )
 
 type OpusMSEncoder struct {
 	layout            ChannelLayout
 	lfe_stream        int
 	application       OpusApplication
-	variable_duration OpusFramesize
+	variable_duration int
 	surround          int
 	bitrate_bps       int
 	subframe_mem      [3]float32
@@ -115,7 +116,7 @@ func logSum(a, b int) int {
 
 func surround_analysis(celt_mode *celt.CeltMode, pcm []int16, pcm_ptr int, bandLogE []int, mem, preemph_mem []int, len, overlap, channels, rate int) {
 	var pos [8]int
-	upsample := resampling_factor(rate)
+	upsample := celt.Resampling_factor(rate)
 	frame_size := len * upsample
 
 	LM := 0
@@ -150,7 +151,7 @@ func surround_analysis(celt_mode *celt.CeltMode, pcm []int16, pcm_ptr int, bandL
 		celt.Celt_preemphasis1(x, input, overlap, frame_size, 1, upsample, celt_mode.preemph, &boxed_preemph, 0)
 		preemph_mem[c] = boxed_preemph.Val
 
-		celt.Clt_mdct_forward(celt_mode.mdct, input, 0, freq[0], 0, celt_mode.window, overlap, celt_mode.maxLM-LM, 1)
+		celt.Clt_mdct_forward(celt_mode.Mdct, input, 0, freq[0], 0, celt_mode.window, overlap, celt_mode.maxLM-LM, 1)
 		if upsample != 1 {
 			bound := len
 			for i := 0; i < bound; i++ {
@@ -189,9 +190,9 @@ func surround_analysis(celt_mode *celt.CeltMode, pcm []int16, pcm_ptr int, bandL
 		copy(mem[c*overlap:(c*overlap)+overlap], input[frame_size:frame_size+overlap])
 	}
 	for i := 0; i < 21; i++ {
-		maskLogE[1][i] = MIN32(maskLogE[0][i], maskLogE[2][i])
+		maskLogE[1][i] = inlines.MIN32(maskLogE[0][i], maskLogE[2][i])
 	}
-	channel_offset := HALF16Int(celt_log2(int(QCONST32(2.0, 14)) / (channels - 1)))
+	channel_offset := inlines.HALF16Int(inlines.Celt_log2(int(inlines.QCONST32(2.0, 14)) / (channels - 1)))
 	for c := 0; c < 3; c++ {
 		for i := 0; i < 21; i++ {
 			maskLogE[c][i] += channel_offset
@@ -224,9 +225,9 @@ func (st *OpusMSEncoder) opus_multistream_encoder_init(Fs, channels, streams, co
 	if surround == 0 {
 		st.lfe_stream = -1
 	}
-	st.bitrate_bps = OPUS_AUTO
+	st.bitrate_bps = opusConstants.OPUS_AUTO
 	st.application = application
-	st.variable_duration = OPUS_FRAMESIZE_ARG
+	st.variable_duration = celt.OPUS_FRAMESIZE_ARG
 	copy(st.layout.mapping[:], mapping)
 	if validate_layout(st.layout) == 0 || validate_encoder_layout(st.layout) == 0 {
 		return OpusError.OPUS_BAD_ARG
@@ -388,9 +389,9 @@ func (st *OpusMSEncoder) surround_rate_allocation(out_rates []int, frame_size in
 	coupled_ratio := 512
 	lfe_ratio := 32
 
-	if st.bitrate_bps == OPUS_AUTO {
+	if st.bitrate_bps == opusConstants.OPUS_AUTO {
 		channel_rate = Fs + 60*Fs/frame_size
-	} else if st.bitrate_bps == OPUS_BITRATE_MAX {
+	} else if st.bitrate_bps == opusConstants.OPUS_BITRATE_MAX {
 		channel_rate = 300000
 	} else {
 		nb_lfe := Ternary(st.lfe_stream != -1, 1, 0)
@@ -420,7 +421,7 @@ const MS_FRAME_TMP = 3*1275 + 7
 func (st *OpusMSEncoder) opus_multistream_encode_native(pcm []int16, pcm_ptr, analysis_frame_size int, data []byte, data_ptr, max_data_bytes, lsb_depth, float_api int) int {
 	var Fs, tot_size, frame_size, rate_sum, smallest_packet int
 	var vbr int
-	var celt_mode *CeltMode
+	var celt_mode *celt.CeltMode
 	var bandLogE []int
 	var mem, preemph_mem []int
 
@@ -459,9 +460,9 @@ func (st *OpusMSEncoder) opus_multistream_encode_native(pcm []int16, pcm_ptr, an
 	rate_sum = st.surround_rate_allocation(bitrates, frame_size)
 
 	if vbr == 0 {
-		if st.bitrate_bps == OPUS_AUTO {
+		if st.bitrate_bps == opusConstants.OPUS_AUTO {
 			max_data_bytes = inlines.IMIN(max_data_bytes, 3*rate_sum/(3*8*Fs/frame_size))
-		} else if st.bitrate_bps != OPUS_BITRATE_MAX {
+		} else if st.bitrate_bps != opusConstants.OPUS_BITRATE_MAX {
 			max_data_bytes = inlines.IMIN(max_data_bytes, inlines.IMAX(smallest_packet, 3*st.bitrate_bps/(3*8*Fs/frame_size)))
 		}
 	}
@@ -582,7 +583,7 @@ func (st *OpusMSEncoder) GetBitrate() int {
 }
 
 func (st *OpusMSEncoder) SetBitrate(value int) error {
-	if value < 0 && value != OPUS_AUTO && value != OPUS_BITRATE_MAX {
+	if value < 0 && value != opusConstants.OPUS_AUTO && value != opusConstants.OPUS_BITRATE_MAX {
 		return errors.New("Invalid bitrate")
 	}
 	st.bitrate_bps = value
@@ -748,7 +749,7 @@ func (st *OpusMSEncoder) SetPredictionDisabled(value bool) {
 	}
 }
 
-func (st *OpusMSEncoder) GetExpertFrameDuration() OpusFramesize {
+func (st *OpusMSEncoder) GetExpertFrameDuration() int {
 	return st.variable_duration
 }
 

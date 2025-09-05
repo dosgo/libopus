@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/dosgo/libopus/celt"
+	"github.com/dosgo/libopus/opusConstants"
 	"github.com/dosgo/libopus/silk"
 )
 
@@ -204,9 +205,9 @@ func (st *OpusEncoder) user_bitrate_to_bitrate(frame_size, max_data_bytes int) i
 	if frame_size == 0 {
 		frame_size = st.Fs / 400
 	}
-	if st.user_bitrate_bps == OPUS_AUTO {
+	if st.user_bitrate_bps == opusConstants.OPUS_AUTO {
 		return 60*st.Fs/frame_size + st.Fs*st.channels
-	} else if st.user_bitrate_bps == OPUS_BITRATE_MAX {
+	} else if st.user_bitrate_bps == opusConstants.OPUS_BITRATE_MAX {
 		return max_data_bytes * 8 * st.Fs / frame_size
 	} else {
 		return st.user_bitrate_bps
@@ -835,10 +836,10 @@ func (st *OpusEncoder) opus_encode_native(pcm []int16, pcm_ptr, frame_size int, 
 			for c = 0; c < st.channels; c++ {
 				for i = 0; i < end; i++ {
 					var mask int
-					mask = MAX16Int(MIN16Int(st.energy_masking[21*c+i], int(math.Trunc(0.5+(.5)*((1)<<(10))))), -int(math.Trunc(0.5+(2.0)*((1)<<(10)))))
+					mask = inlines.MAX16Int(inlines.MIN16Int(st.energy_masking[21*c+i], int(math.Trunc(0.5+(.5)*((1)<<(10))))), -int(math.Trunc(0.5+(2.0)*((1)<<(10)))))
 
 					if mask > 0 {
-						mask = HALF16Int(mask)
+						mask = inlines.HALF16Int(mask)
 					}
 					mask_sum += mask
 				}
@@ -846,8 +847,8 @@ func (st *OpusEncoder) opus_encode_native(pcm []int16, pcm_ptr, frame_size int, 
 			/* Conservative rate reduction, we cut the masking in half */
 			masking_depth = mask_sum / end * st.channels
 			masking_depth += int(int16(math.Trunc(0.5 + (.2)*float64((1)<<(10))))) /*Inlines.QCONST16(.2f, 10)*/
-			rate_offset = PSHR32(MULT16_16(int(srate), masking_depth), 10)
-			rate_offset = MAX32(rate_offset, -2*st.silk_mode.bitRate/3)
+			rate_offset = inlines.PSHR32(inlines.MULT16_16(int(srate), masking_depth), 10)
+			rate_offset = inlines.MAX32(rate_offset, -2*st.silk_mode.bitRate/3)
 			/* Split the rate change between the SILK and CELT part for hybrid. */
 			if st.bandwidth == OPUS_BANDWIDTH_SUPERWIDEBAND || st.bandwidth == OPUS_BANDWIDTH_FULLBAND {
 				st.silk_mode.bitRate += 3 * rate_offset / 5
@@ -865,7 +866,7 @@ func (st *OpusEncoder) opus_encode_native(pcm []int16, pcm_ptr, frame_size int, 
 		} else if curr_bandwidth == OPUS_BANDWIDTH_MEDIUMBAND {
 			st.silk_mode.desiredInternalSampleRate = 12000
 		} else {
-			OpusAssert(st.mode == MODE_HYBRID || curr_bandwidth == OPUS_BANDWIDTH_WIDEBAND)
+			inlines.OpusAssert(st.mode == MODE_HYBRID || curr_bandwidth == OPUS_BANDWIDTH_WIDEBAND)
 			st.silk_mode.desiredInternalSampleRate = 16000
 		}
 		if st.mode == MODE_HYBRID {
@@ -957,7 +958,7 @@ func (st *OpusEncoder) opus_encode_native(pcm []int16, pcm_ptr, frame_size int, 
 				curr_bandwidth = OPUS_BANDWIDTH_WIDEBAND
 			}
 		} else {
-			OpusAssert(st.silk_mode.internalSampleRate == 16000)
+			inlines.OpusAssert(st.silk_mode.internalSampleRate == 16000)
 		}
 
 		st.silk_mode.opusCanSwitch = st.silk_mode.switchReady
@@ -990,7 +991,7 @@ func (st *OpusEncoder) opus_encode_native(pcm []int16, pcm_ptr, frame_size int, 
 		celt_enc.SetEndBand(endband)
 		celt_enc.SetChannels(st.stream_channels)
 	}
-	celt_enc.SetBitrate(OPUS_BITRATE_MAX)
+	celt_enc.SetBitrate(opusConstants.OPUS_BITRATE_MAX)
 	if st.mode != MODE_SILK_ONLY {
 		var celt_pred int = 2
 		celt_enc.SetVBR(false)
@@ -1301,7 +1302,7 @@ func (st *OpusEncoder) GetBitrate() int {
 }
 
 func (st *OpusEncoder) SetBitrate(value int) {
-	if value != OPUS_AUTO && value != OPUS_BITRATE_MAX {
+	if value != opusConstants.OPUS_AUTO && value != opusConstants.OPUS_BITRATE_MAX {
 		if value <= 0 {
 			panic("Bitrate must be positive")
 		} else if value <= 500 {

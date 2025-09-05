@@ -18,7 +18,7 @@ type SilkChannelEncoder struct {
 	speech_activity_Q8            int
 	allow_bandwidth_switch        int
 	LBRRprevLastGainIndex         byte
-	prevSignalType                byte
+	PrevSignalType                byte
 	prevLag                       int
 	pitch_LPC_win_length          int
 	max_pitch_lag                 int
@@ -137,7 +137,7 @@ func (s *SilkChannelEncoder) Reset() {
 	s.speech_activity_Q8 = 0
 	s.allow_bandwidth_switch = 0
 	s.LBRRprevLastGainIndex = 0
-	s.prevSignalType = 0
+	s.PrevSignalType = 0
 	s.prevLag = 0
 	s.pitch_LPC_win_length = 0
 	s.max_pitch_lag = 0
@@ -355,7 +355,7 @@ func (s *SilkChannelEncoder) silk_setup_fs(fs_kHz int, PacketSize_ms int) int {
 		s.sShape.LastGainIndex = 10
 		s.sNSQ.lagPrev = 100
 		s.sNSQ.prev_gain_Q16 = 65536
-		s.prevSignalType = TYPE_NO_VOICE_ACTIVITY
+		s.PrevSignalType = TYPE_NO_VOICE_ACTIVITY
 
 		s.fs_kHz = fs_kHz
 		if s.fs_kHz == 8 {
@@ -799,7 +799,7 @@ func (s *SilkChannelEncoder) silk_encode_frame(pnBytesOut *comm.BoxedValueInt, p
 		return ret
 	}
 	s.prevLag = sEncCtrl.pitchL[s.nb_subfr-1]
-	s.prevSignalType = s.indices.signalType
+	s.PrevSignalType = s.indices.signalType
 	s.first_frame_after_reset = 0
 	pnBytesOut.Val = int(uint(psRangeEnc.Tell()+7) >> 3)
 

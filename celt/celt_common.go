@@ -1164,7 +1164,7 @@ func celt_plc_pitch_search(decode_mem [][]int, C int) int {
 	return CeltConstants.PLC_PITCH_LAG_MAX - pitch_index.Val
 }
 
-func resampling_factor(rate int) int {
+func Resampling_factor(rate int) int {
 	switch rate {
 	case 48000:
 		return 1

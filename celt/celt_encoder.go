@@ -172,7 +172,7 @@ func (this *CeltEncoder) celt_encoder_init(sampling_rate int, channels int) int 
 	if ret != OpusError.OPUS_OK {
 		return ret
 	}
-	this.upsample = resampling_factor(sampling_rate)
+	this.upsample = Resampling_factor(sampling_rate)
 	return OpusError.OPUS_OK
 }
 

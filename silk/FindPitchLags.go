@@ -67,7 +67,7 @@ func silk_find_pitch_lags(psEnc *SilkChannelEncoder, psEncCtrl *SilkEncoderContr
 		thrhld_Q13 = inlines.Silk_SMLABB(thrhld_Q13, int(math.Trunc((-0.004)*float64(int64(1)<<(13))+0.5)), psEnc.pitchEstimationLPCOrder)
 
 		thrhld_Q13 = inlines.Silk_SMLAWB(thrhld_Q13, int(math.Trunc((-0.1)*float64(int64(1)<<(21))+0.5)), psEnc.speech_activity_Q8)
-		thrhld_Q13 = inlines.Silk_SMLABB(thrhld_Q13, int(math.Trunc((-0.15)*float64(int64(1)<<(13))+0.5)), inlines.Silk_RSHIFT(int(psEnc.prevSignalType), 1))
+		thrhld_Q13 = inlines.Silk_SMLABB(thrhld_Q13, int(math.Trunc((-0.15)*float64(int64(1)<<(13))+0.5)), inlines.Silk_RSHIFT(int(psEnc.PrevSignalType), 1))
 		thrhld_Q13 = inlines.Silk_SMLAWB(thrhld_Q13, int(math.Trunc((-0.1)*float64(int64(1)<<(14))+0.5)), psEnc.input_tilt_Q15)
 		thrhld_Q13 = inlines.Silk_SAT16(thrhld_Q13)
 
