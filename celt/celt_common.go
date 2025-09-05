@@ -55,7 +55,7 @@ func compute_vbr(mode *CeltMode, analysis *AnalysisInfo, base_target int, LM int
 
 		//stereo_saving_val := MIN16(int16(stereo_saving), int16(0.5+1.0*float32(1<<8)))
 		stereo_saving = inlines.MIN16Int(stereo_saving, int(math.Trunc(0.5+(1.0)*((1)<<(8)))))
-		target -= int(inlines.MIN32(inlines.MULT16_32_Q15Int(max_frac, int(target)), inlines.SHR32(inlines.inlines.MULT16_16(int(stereo_saving)-int(math.Trunc(0.5+0.1*float64(1<<8))), int(coded_stereo_dof<<BITRES)), 8)))
+		target -= int(inlines.MIN32(inlines.MULT16_32_Q15Int(max_frac, int(target)), inlines.SHR32(inlines.MULT16_16(int(stereo_saving)-int(math.Trunc(0.5+0.1*float64(1<<8))), int(coded_stereo_dof<<BITRES)), 8)))
 	}
 
 	target += tot_boost - (16 << LM)
@@ -203,7 +203,7 @@ func patch_transient_decision(newE [][]int, oldE [][]int, nbEBands int, start in
 	} else {
 		spread_old[start] = inlines.MAX16Int(oldE[0][start], oldE[1][start])
 		for i := start + 1; i < end; i++ {
-			spread_old[i] = inlines.MAX16Int(spread_old[i-1]-int(1.0*float32(int(1)<<CeltConstants.DB_SHIFT)), inlines.inlines.MAX16Int(oldE[0][i], oldE[1][i]))
+			spread_old[i] = inlines.MAX16Int(spread_old[i-1]-int(1.0*float32(int(1)<<CeltConstants.DB_SHIFT)), inlines.MAX16Int(oldE[0][i], oldE[1][i]))
 		}
 	}
 
