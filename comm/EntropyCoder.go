@@ -28,9 +28,9 @@ type EntropyCoder struct {
 	end_offs    int
 	end_window  int64
 	nend_bits   int
-	nbits_total int
+	Nbits_total int
 	Offs        int
-	rng         int64
+	Rng         int64
 	val         int64
 	ext         int64
 	rem         int
@@ -50,7 +50,7 @@ func (ec *EntropyCoder) Reset() {
 	ec.end_window = 0
 	ec.nend_bits = 0
 	ec.Offs = 0
-	ec.rng = 0
+	ec.Rng = 0
 	ec.val = 0
 	ec.ext = 0
 	ec.rem = 0
@@ -64,9 +64,9 @@ func (ec *EntropyCoder) Assign(other *EntropyCoder) {
 	ec.end_offs = other.end_offs
 	ec.end_window = other.end_window
 	ec.nend_bits = other.nend_bits
-	ec.nbits_total = other.nbits_total
+	ec.Nbits_total = other.Nbits_total
 	ec.Offs = other.Offs
-	ec.rng = other.rng
+	ec.Rng = other.Rng
 	ec.val = other.val
 	ec.ext = other.ext
 	ec.rem = other.rem
@@ -119,10 +119,10 @@ func (ec *EntropyCoder) write_byte_at_end(_value int64) int {
 }
 
 func (ec *EntropyCoder) dec_normalize() {
-	for ec.rng <= EC_CODE_BOT {
+	for ec.Rng <= EC_CODE_BOT {
 		var sym int
-		ec.nbits_total += EC_SYM_BITS
-		ec.rng = inlines.CapToUInt32(ec.rng << EC_SYM_BITS)
+		ec.Nbits_total += EC_SYM_BITS
+		ec.Rng = inlines.CapToUInt32(ec.Rng << EC_SYM_BITS)
 
 		/*Use up the remaining bits from our last symbol.*/
 		sym = ec.rem
@@ -138,7 +138,7 @@ func (ec *EntropyCoder) dec_normalize() {
 	}
 }
 
-func (ec *EntropyCoder) dec_init(_buf []byte, _buf_ptr int, _storage int) {
+func (ec *EntropyCoder) Dec_init(_buf []byte, _buf_ptr int, _storage int) {
 
 	ec.buf = _buf
 	ec.buf_ptr = _buf_ptr
@@ -146,25 +146,25 @@ func (ec *EntropyCoder) dec_init(_buf []byte, _buf_ptr int, _storage int) {
 	ec.end_offs = 0
 	ec.end_window = 0
 	ec.nend_bits = 0
-	ec.nbits_total = EC_CODE_BITS + 1 - ((EC_CODE_BITS-EC_CODE_EXTRA)/EC_SYM_BITS)*EC_SYM_BITS
+	ec.Nbits_total = EC_CODE_BITS + 1 - ((EC_CODE_BITS-EC_CODE_EXTRA)/EC_SYM_BITS)*EC_SYM_BITS
 	ec.Offs = 0
-	ec.rng = 1 << EC_CODE_EXTRA
+	ec.Rng = 1 << EC_CODE_EXTRA
 	ec.rem = ec.read_byte()
 	//ec.val = ec.rng - 1 - int64(ec.rem>>(EC_SYM_BITS-EC_CODE_EXTRA))
-	ec.val = inlines.CapToUInt32(ec.rng - 1 - int64(ec.rem>>(EC_SYM_BITS-EC_CODE_EXTRA)))
+	ec.val = inlines.CapToUInt32(ec.Rng - 1 - int64(ec.rem>>(EC_SYM_BITS-EC_CODE_EXTRA)))
 	ec.error = 0
 	ec.dec_normalize()
 }
 
 func (ec *EntropyCoder) Decode(_ft int64) int64 {
 	_ft = inlines.CapToUInt32(_ft)
-	ec.ext = inlines.CapToUInt32(ec.rng / _ft)
+	ec.ext = inlines.CapToUInt32(ec.Rng / _ft)
 	s := inlines.CapToUInt32(ec.val / ec.ext)
 	return inlines.CapToUInt32(_ft - inlines.EC_MINI(inlines.CapToUInt32(s+1), _ft))
 }
 
 func (ec *EntropyCoder) Decode_bin(_bits int) int64 {
-	ec.ext = ec.rng >> _bits
+	ec.ext = ec.Rng >> _bits
 	s := inlines.CapToUInt32(ec.val / ec.ext)
 	return inlines.CapToUInt32(inlines.CapToUInt32(1<<_bits) - inlines.EC_MINI(inlines.CapToUInt32(s+1), 1<<_bits))
 }
@@ -176,9 +176,9 @@ func (ec *EntropyCoder) Dec_update(_fl int64, _fh int64, _ft int64) {
 	s := inlines.CapToUInt32(ec.ext * (_ft - _fh))
 	ec.val = ec.val - s
 	if _fl > 0 {
-		ec.rng = inlines.CapToUInt32(ec.ext * (_fh - _fl))
+		ec.Rng = inlines.CapToUInt32(ec.ext * (_fh - _fl))
 	} else {
-		ec.rng = ec.rng - s
+		ec.Rng = ec.Rng - s
 	}
 	ec.dec_normalize()
 }
@@ -188,7 +188,7 @@ func (ec *EntropyCoder) Dec_bit_logp(_logp int64) int {
 	var d int64
 	var s int64
 	var ret int
-	r = ec.rng
+	r = ec.Rng
 	d = ec.val
 	s = r >> _logp
 	ret = 0
@@ -200,9 +200,9 @@ func (ec *EntropyCoder) Dec_bit_logp(_logp int64) int {
 		ec.val = inlines.CapToUInt32(d - s)
 	}
 	if ret != 0 {
-		ec.rng = s
+		ec.Rng = s
 	} else {
-		ec.rng = r - s
+		ec.Rng = r - s
 	}
 	ec.dec_normalize()
 	return ret
@@ -210,7 +210,7 @@ func (ec *EntropyCoder) Dec_bit_logp(_logp int64) int {
 
 func (ec *EntropyCoder) Dec_icdf(_icdf []int16, _ftb int) int {
 	var t int64
-	var s = ec.rng
+	var s = ec.Rng
 	var d = ec.val
 	var r = s >> _ftb
 	var ret int = -1
@@ -224,14 +224,14 @@ func (ec *EntropyCoder) Dec_icdf(_icdf []int16, _ftb int) int {
 		break
 	}
 	ec.val = inlines.CapToUInt32(d - s)
-	ec.rng = inlines.CapToUInt32(t - s)
+	ec.Rng = inlines.CapToUInt32(t - s)
 	ec.dec_normalize()
 	return ret
 }
 
 func (ec *EntropyCoder) Dec_icdf_offset(_icdf []int16, _icdf_offset int, _ftb int) int {
 	var t int64
-	var s = ec.rng
+	var s = ec.Rng
 	var d = ec.val
 	var r = s >> _ftb
 	var ret = _icdf_offset - 1
@@ -246,7 +246,7 @@ func (ec *EntropyCoder) Dec_icdf_offset(_icdf []int16, _icdf_offset int, _ftb in
 		break
 	}
 	ec.val = inlines.CapToUInt32(d - s)
-	ec.rng = inlines.CapToUInt32(t - s)
+	ec.Rng = inlines.CapToUInt32(t - s)
 
 	ec.dec_normalize()
 	return ret - _icdf_offset
@@ -305,7 +305,7 @@ func (ec *EntropyCoder) Dec_bits(_bits int) int {
 	available = available - _bits
 	ec.end_window = inlines.CapToUInt32(window)
 	ec.nend_bits = available
-	ec.nbits_total = ec.nbits_total + _bits
+	ec.Nbits_total = ec.Nbits_total + _bits
 	return ret
 }
 
@@ -334,25 +334,25 @@ var i = 0
 func (ec *EntropyCoder) enc_normalize() {
 	/*If the range is too small, output some bits and rescale it.*/
 
-	for ec.rng <= EC_CODE_BOT {
+	for ec.Rng <= EC_CODE_BOT {
 		ec.enc_carry_out(int(int32(ec.val >> EC_CODE_SHIFT)))
 		/*Move the next-to-high-order symbol into the high-order position.*/
 		ec.val = inlines.CapToUInt32((ec.val << EC_SYM_BITS) & (EC_CODE_TOP - 1))
-		ec.rng = inlines.CapToUInt32(ec.rng << EC_SYM_BITS)
-		ec.nbits_total += EC_SYM_BITS
+		ec.Rng = inlines.CapToUInt32(ec.Rng << EC_SYM_BITS)
+		ec.Nbits_total += EC_SYM_BITS
 	}
 
 }
 
-func (ec *EntropyCoder) enc_init(_buf []byte, buf_ptr int, _size int) {
+func (ec *EntropyCoder) Enc_init(_buf []byte, buf_ptr int, _size int) {
 	ec.buf = _buf
 	ec.buf_ptr = buf_ptr
 	ec.end_offs = 0
 	ec.end_window = 0
 	ec.nend_bits = 0
-	ec.nbits_total = EC_CODE_BITS + 1
+	ec.Nbits_total = EC_CODE_BITS + 1
 	ec.Offs = 0
-	ec.rng = inlines.CapToUInt32(EC_CODE_TOP)
+	ec.Rng = inlines.CapToUInt32(EC_CODE_TOP)
 	ec.rem = -1
 	ec.val = 0
 	ec.ext = 0
@@ -364,12 +364,12 @@ func (ec *EntropyCoder) Encode(_fl int64, _fh int64, _ft int64) {
 	_fl = inlines.CapToUInt32(_fl)
 	_fh = inlines.CapToUInt32(_fh)
 	_ft = inlines.CapToUInt32(_ft)
-	r := inlines.CapToUInt32(ec.rng / _ft)
+	r := inlines.CapToUInt32(ec.Rng / _ft)
 	if _fl > 0 {
-		ec.val += inlines.CapToUInt32(ec.rng - (r * (_ft - _fl)))
-		ec.rng = inlines.CapToUInt32(r * (_fh - _fl))
+		ec.val += inlines.CapToUInt32(ec.Rng - (r * (_ft - _fl)))
+		ec.Rng = inlines.CapToUInt32(r * (_fh - _fl))
 	} else {
-		ec.rng = inlines.CapToUInt32(ec.rng - (r * (_ft - _fh)))
+		ec.Rng = inlines.CapToUInt32(ec.Rng - (r * (_ft - _fh)))
 	}
 
 	ec.enc_normalize()
@@ -378,12 +378,12 @@ func (ec *EntropyCoder) Encode(_fl int64, _fh int64, _ft int64) {
 func (ec *EntropyCoder) Encode_bin(_fl int64, _fh int64, _bits int) {
 	_fl = inlines.CapToUInt32(_fl)
 	_fh = inlines.CapToUInt32(_fh)
-	r := inlines.CapToUInt32(ec.rng >> _bits)
+	r := inlines.CapToUInt32(ec.Rng >> _bits)
 	if _fl > 0 {
-		ec.val = inlines.CapToUInt32(ec.val + inlines.CapToUInt32(ec.rng-(r*((1<<_bits)-_fl))))
-		ec.rng = inlines.CapToUInt32(r * (_fh - _fl))
+		ec.val = inlines.CapToUInt32(ec.val + inlines.CapToUInt32(ec.Rng-(r*((1<<_bits)-_fl))))
+		ec.Rng = inlines.CapToUInt32(r * (_fh - _fl))
 	} else {
-		ec.rng = inlines.CapToUInt32(ec.rng - (r * ((1 << _bits) - _fh)))
+		ec.Rng = inlines.CapToUInt32(ec.Rng - (r * ((1 << _bits) - _fh)))
 	}
 
 	ec.enc_normalize()
@@ -391,7 +391,7 @@ func (ec *EntropyCoder) Encode_bin(_fl int64, _fh int64, _bits int) {
 
 func (ec *EntropyCoder) Enc_bit_logp(_val int, _logp int) {
 
-	r := ec.rng
+	r := ec.Rng
 	l := ec.val
 	s := r >> _logp
 	r -= s
@@ -399,41 +399,41 @@ func (ec *EntropyCoder) Enc_bit_logp(_val int, _logp int) {
 		ec.val = inlines.CapToUInt32(l + r)
 	}
 	if _val != 0 {
-		ec.rng = s
+		ec.Rng = s
 	} else {
-		ec.rng = r
+		ec.Rng = r
 	}
 	ec.enc_normalize()
 }
 
 func (ec *EntropyCoder) Enc_icdf(_s int, _icdf []int16, _ftb int) {
-	old := ec.rng
-	r := inlines.CapToUInt32(ec.rng >> _ftb)
+	old := ec.Rng
+	r := inlines.CapToUInt32(ec.Rng >> _ftb)
 	if _s > 0 {
-		ec.val = ec.val + inlines.CapToUInt32(ec.rng-inlines.CapToUInt32(r*int64(_icdf[_s-1])))
-		ec.rng = (r * int64(_icdf[_s-1]-_icdf[_s]))
+		ec.val = ec.val + inlines.CapToUInt32(ec.Rng-inlines.CapToUInt32(r*int64(_icdf[_s-1])))
+		ec.Rng = (r * int64(_icdf[_s-1]-_icdf[_s]))
 	} else {
-		ec.rng = inlines.CapToUInt32(ec.rng - (r * int64(_icdf[_s])))
+		ec.Rng = inlines.CapToUInt32(ec.Rng - (r * int64(_icdf[_s])))
 	}
 	ec.enc_normalize()
 	if Debug {
 		//panic("enc_icdf")
-		fmt.Printf("enc_icdf nbits_total:%d this.rng  :%d old:%d  _ftb:%d _s:%d\r\n", ec.nbits_total, ec.rng, old, _ftb, _s)
+		fmt.Printf("enc_icdf nbits_total:%d this.rng  :%d old:%d  _ftb:%d _s:%d\r\n", ec.Nbits_total, ec.Rng, old, _ftb, _s)
 	}
 }
 
 func (ec *EntropyCoder) Enc_icdf_offset(_s int, _icdf []int16, icdf_ptr int, _ftb int) {
-	old := ec.rng
-	r := inlines.CapToUInt32(ec.rng >> _ftb)
+	old := ec.Rng
+	r := inlines.CapToUInt32(ec.Rng >> _ftb)
 	if _s > 0 {
-		ec.val = ec.val + inlines.CapToUInt32(ec.rng-inlines.CapToUInt32(r*int64(_icdf[icdf_ptr+_s-1])))
-		ec.rng = inlines.CapToUInt32(r * inlines.CapToUInt32(int64(_icdf[icdf_ptr+_s-1]-_icdf[icdf_ptr+_s])))
+		ec.val = ec.val + inlines.CapToUInt32(ec.Rng-inlines.CapToUInt32(r*int64(_icdf[icdf_ptr+_s-1])))
+		ec.Rng = inlines.CapToUInt32(r * inlines.CapToUInt32(int64(_icdf[icdf_ptr+_s-1]-_icdf[icdf_ptr+_s])))
 	} else {
-		ec.rng = inlines.CapToUInt32(ec.rng - r*int64(_icdf[icdf_ptr+_s]))
+		ec.Rng = inlines.CapToUInt32(ec.Rng - r*int64(_icdf[icdf_ptr+_s]))
 	}
 	ec.enc_normalize()
 	if Debug {
-		fmt.Printf("enc_icdf_offset nbits_total:%d this.rng  :%d old:%d  _ftb:%d _s:%d\r\n", ec.nbits_total, ec.rng, old, _ftb, _s)
+		fmt.Printf("enc_icdf_offset nbits_total:%d this.rng  :%d old:%d  _ftb:%d _s:%d\r\n", ec.Nbits_total, ec.Rng, old, _ftb, _s)
 	}
 }
 
@@ -475,7 +475,7 @@ func (ec *EntropyCoder) Enc_bits(_fl int64, _bits int) {
 	used += _bits
 	ec.end_window = window
 	ec.nend_bits = used
-	ec.nbits_total += _bits
+	ec.Nbits_total += _bits
 
 }
 
@@ -486,14 +486,14 @@ func (ec *EntropyCoder) enc_patch_initial_bits(_val int64, _nbits int) {
 		ec.buf[ec.buf_ptr] = (ec.buf[ec.buf_ptr] & ^byte(mask)) | byte(_val<<shift)
 	} else if ec.rem >= 0 {
 		ec.rem = int((int64(ec.rem) & ^mask) | (_val << shift))
-	} else if ec.rng <= EC_CODE_TOP>>_nbits {
+	} else if ec.Rng <= EC_CODE_TOP>>_nbits {
 		ec.val = (ec.val & ^(mask << EC_CODE_SHIFT)) | (_val << (EC_CODE_SHIFT + shift))
 	} else {
 		ec.error = -1
 	}
 }
 
-func (ec *EntropyCoder) enc_shrink(_size int) {
+func (ec *EntropyCoder) Enc_shrink(_size int) {
 	if ec.Offs+ec.end_offs > _size {
 		panic("offs + end_offs > size")
 	}
@@ -505,12 +505,12 @@ func (ec *EntropyCoder) Range_bytes() int {
 	return ec.Offs
 }
 
-func (ec *EntropyCoder) get_error() int {
+func (ec *EntropyCoder) Get_error() int {
 	return ec.error
 }
 
 func (ec *EntropyCoder) Tell() int {
-	return ec.nbits_total - inlines.EC_ILOG(int64(ec.rng))
+	return ec.Nbits_total - inlines.EC_ILOG(int64(ec.Rng))
 }
 
 func (ec *EntropyCoder) Tell_frac() int {
@@ -518,16 +518,16 @@ func (ec *EntropyCoder) Tell_frac() int {
 	var r int
 	var l int
 	var b int64
-	nbits = ec.nbits_total << BITRES
-	l = inlines.EC_ILOG(ec.rng)
-	r = int(ec.rng >> (l - 16))
+	nbits = ec.Nbits_total << BITRES
+	l = inlines.EC_ILOG(ec.Rng)
+	r = int(ec.Rng >> (l - 16))
 	b = int64(int(r>>12) - 8)
 	b = inlines.CapToUInt32(b + int64(BoolToInt(r > correction[b])))
 	l = int(((l << 3) + int(b)))
 	return nbits - l
 }
 
-func (ec *EntropyCoder) enc_done() {
+func (ec *EntropyCoder) Enc_done() {
 	var window int64
 	var used int
 	var msk int64
@@ -536,12 +536,12 @@ func (ec *EntropyCoder) enc_done() {
 
 	/*We output the minimum number of bits that ensures that the symbols encoded
 	  thus far will be decoded correctly regardless of the bits that follow.*/
-	l = EC_CODE_BITS - inlines.EC_ILOG(ec.rng)
+	l = EC_CODE_BITS - inlines.EC_ILOG(ec.Rng)
 	msk = inlines.CapToUInt32(int64(uint32(EC_CODE_TOP-1)) >> l)
 
 	end = inlines.CapToUInt32((inlines.CapToUInt32(ec.val + msk)) & ^msk)
 
-	if (end | msk) >= ec.val+ec.rng {
+	if (end | msk) >= ec.val+ec.Rng {
 		l++
 		msk >>= 1
 		end = inlines.CapToUInt32((inlines.CapToUInt32(ec.val + msk)) & ^msk)

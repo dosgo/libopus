@@ -3,6 +3,6 @@ package celt
 type MDCTLookup struct {
 	n        int
 	maxshift int
-	kfft     [4]*FFTState
+	Kfft     [4]*FFTState
 	trig     []int16
 }

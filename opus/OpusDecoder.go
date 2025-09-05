@@ -2,6 +2,10 @@ package opus
 
 import (
 	"errors"
+
+	"github.com/dosgo/libopus/celt"
+	"github.com/dosgo/libopus/comm"
+	"github.com/dosgo/libopus/silk"
 )
 
 type OpusDecoder struct {
@@ -17,8 +21,8 @@ type OpusDecoder struct {
 	prev_redundancy      int
 	last_packet_duration int
 	rangeFinal           int
-	SilkDecoder          SilkDecoder
-	Celt_Decoder         CeltDecoder
+	SilkDecoder          silk.SilkDecoder
+	Celt_Decoder         celt.CeltDecoder
 }
 
 func (this *OpusDecoder) reset() {
@@ -63,7 +67,7 @@ func (this *OpusDecoder) opus_decoder_init(Fs int, channels int) int {
 		return OpusError.OPUS_INTERNAL_ERROR
 	}
 
-	ret = celt_dec.celt_decoder_init(Fs, channels)
+	ret = celt_dec.Celt_decoder_init(Fs, channels)
 	if ret != OpusError.OPUS_OK {
 		return OpusError.OPUS_INTERNAL_ERROR
 	}
@@ -84,8 +88,8 @@ func NewOpusDecoder(Fs int, channels int) (*OpusDecoder, error) {
 	if channels != 1 && channels != 2 {
 		return nil, errors.New("Number of channels must be 1 or 2")
 	}
-	this.SilkDecoder = NewSilkDecoder()
-	this.Celt_Decoder = CeltDecoder{}
+	this.SilkDecoder = silk.NewSilkDecoder()
+	this.Celt_Decoder = celt.CeltDecoder{}
 
 	ret = this.opus_decoder_init(Fs, channels)
 	if ret != OpusError.OPUS_OK {
@@ -102,7 +106,7 @@ var SILENCE = []byte{0xFF, 0xFF}
 func (this *OpusDecoder) opus_decode_frame(data []byte, data_ptr int, len int, pcm []int16, pcm_ptr int, frame_size int, decode_fec int) int {
 
 	var i, silk_ret, celt_ret int
-	dec := EntropyCoder{}
+	dec := comm.EntropyCoder{}
 	var silk_frame_size int
 	var pcm_silk []int16
 	var pcm_transition_silk []int16
@@ -125,15 +129,15 @@ func (this *OpusDecoder) opus_decode_frame(data []byte, data_ptr int, len int, p
 	if frame_size < F2_5 {
 		return OpusError.OPUS_BUFFER_TOO_SMALL
 	}
-	frame_size = IMIN(frame_size, this.Fs/25*3)
+	frame_size = inlines.IMIN(frame_size, this.Fs/25*3)
 	if len <= 1 {
 		data = nil
-		frame_size = IMIN(frame_size, this.frame_size)
+		frame_size = inlines.IMIN(frame_size, this.frame_size)
 	}
 	if data != nil {
 		audiosize = this.frame_size
 		mode = this.mode
-		dec.dec_init(data, data_ptr, len)
+		dec.Dec_init(data, data_ptr, len)
 	} else {
 		audiosize = frame_size
 		mode = this.prev_mode
@@ -148,7 +152,7 @@ func (this *OpusDecoder) opus_decode_frame(data []byte, data_ptr int, len int, p
 		if audiosize > F20 {
 			for audiosize > 0 {
 
-				ret := this.opus_decode_frame(nil, 0, 0, pcm, pcm_ptr, IMIN(audiosize, F20), 0)
+				ret := this.opus_decode_frame(nil, 0, 0, pcm, pcm_ptr, inlines.IMIN(audiosize, F20), 0)
 				if ret < 0 {
 					return ret
 				}
@@ -184,7 +188,7 @@ func (this *OpusDecoder) opus_decode_frame(data []byte, data_ptr int, len int, p
 	pcm_transition_celt = make([]int16, pcm_transition_celt_size)
 	if transition != 0 && mode == MODE_CELT_ONLY {
 		pcm_transition = pcm_transition_celt
-		this.opus_decode_frame(nil, 0, 0, pcm_transition, 0, IMIN(F5, audiosize), 0)
+		this.opus_decode_frame(nil, 0, 0, pcm_transition, 0, inlines.IMIN(F5, audiosize), 0)
 	}
 	if audiosize > frame_size {
 		return OpusError.OPUS_BAD_ARG
@@ -194,7 +198,7 @@ func (this *OpusDecoder) opus_decode_frame(data []byte, data_ptr int, len int, p
 
 	pcm_silk_size := 0
 	if mode != MODE_CELT_ONLY && celt_accum == 0 {
-		pcm_silk_size = IMAX(F10, frame_size) * this.channels
+		pcm_silk_size = inlines.IMAX(F10, frame_size) * this.channels
 	}
 	pcm_silk = make([]int16, pcm_silk_size)
 
@@ -216,7 +220,7 @@ func (this *OpusDecoder) opus_decode_frame(data []byte, data_ptr int, len int, p
 		}
 
 		/* The SILK PLC cannot produce frames of less than 10 ms */
-		this.DecControl.payloadSize_ms = IMAX(10, 1000*audiosize/this.Fs)
+		this.DecControl.payloadSize_ms = inlines.IMAX(10, 1000*audiosize/this.Fs)
 
 		if data != nil {
 			this.DecControl.nChannelsInternal = this.stream_channels
@@ -229,7 +233,7 @@ func (this *OpusDecoder) opus_decode_frame(data []byte, data_ptr int, len int, p
 					this.DecControl.internalSampleRate = 16000
 				} else {
 					this.DecControl.internalSampleRate = 16000
-					OpusAssert(false)
+					inlines.OpusAssert(false)
 				}
 			} else {
 				/* Hybrid mode */
@@ -272,26 +276,26 @@ func (this *OpusDecoder) opus_decode_frame(data []byte, data_ptr int, len int, p
 
 	start_band = 0
 	if decode_fec == 0 && mode != MODE_CELT_ONLY && data != nil &&
-		dec.tell()+17+20*boolToInt(this.mode == MODE_HYBRID) <= 8*len {
+		dec.Tell()+17+20*boolToInt(this.mode == MODE_HYBRID) <= 8*len {
 		if mode == MODE_HYBRID {
-			redundancy = dec.dec_bit_logp(12)
+			redundancy = dec.Dec_bit_logp(12)
 		} else {
 			redundancy = 1
 		}
 		if redundancy != 0 {
-			celt_to_silk = dec.dec_bit_logp(1)
+			celt_to_silk = dec.Dec_bit_logp(1)
 			if mode == MODE_HYBRID {
-				redundancy_bytes = int(dec.dec_uint(256)) + 2
+				redundancy_bytes = int(dec.Dec_uint(256)) + 2
 			} else {
-				redundancy_bytes = len - ((dec.tell() + 7) >> 3)
+				redundancy_bytes = len - ((dec.Tell() + 7) >> 3)
 			}
 			len -= redundancy_bytes
-			if len*8 < dec.tell() {
+			if len*8 < dec.Tell() {
 				len = 0
 				redundancy_bytes = 0
 				redundancy = 0
 			}
-			dec.storage = dec.storage - redundancy_bytes
+			dec.Storage = dec.Storage - redundancy_bytes
 		}
 	}
 
@@ -322,7 +326,7 @@ func (this *OpusDecoder) opus_decode_frame(data []byte, data_ptr int, len int, p
 
 	if transition != 0 && mode != MODE_CELT_ONLY {
 		pcm_transition = pcm_transition_silk
-		this.opus_decode_frame(nil, 0, 0, pcm_transition, 0, IMIN(F5, audiosize), 0)
+		this.opus_decode_frame(nil, 0, 0, pcm_transition, 0, inlines.IMIN(F5, audiosize), 0)
 	}
 
 	redundant_audio_size := 0
@@ -333,7 +337,7 @@ func (this *OpusDecoder) opus_decode_frame(data []byte, data_ptr int, len int, p
 
 	if redundancy != 0 && celt_to_silk != 0 {
 		this.Celt_Decoder.SetStartBand(0)
-		this.Celt_Decoder.celt_decode_with_ec(data, data_ptr+len, redundancy_bytes, redundant_audio, 0, F5, nil, 0)
+		this.Celt_Decoder.Celt_decode_with_ec(data, data_ptr+len, redundancy_bytes, redundant_audio, 0, F5, nil, 0)
 		redundant_rng := this.Celt_Decoder.GetFinalRange()
 		_ = redundant_rng
 	}
@@ -341,7 +345,7 @@ func (this *OpusDecoder) opus_decode_frame(data []byte, data_ptr int, len int, p
 	this.Celt_Decoder.SetStartBand(start_band)
 	if mode != MODE_SILK_ONLY {
 
-		celt_frame_size := IMIN(F20, frame_size)
+		celt_frame_size := inlines.IMIN(F20, frame_size)
 		if mode != this.prev_mode && (this.prev_mode != MODE_AUTO && this.prev_mode != MODE_UNKNOWN) && this.prev_redundancy == 0 {
 			this.Celt_Decoder.ResetState()
 		}
@@ -349,7 +353,7 @@ func (this *OpusDecoder) opus_decode_frame(data []byte, data_ptr int, len int, p
 		if decode_fec != 0 {
 			decode_data = nil
 		}
-		celt_ret = this.Celt_Decoder.celt_decode_with_ec(decode_data, data_ptr, len, pcm, pcm_ptr, celt_frame_size, &dec, celt_accum)
+		celt_ret = this.Celt_Decoder.Celt_decode_with_ec(decode_data, data_ptr, len, pcm, pcm_ptr, celt_frame_size, &dec, celt_accum)
 	} else {
 		if celt_accum == 0 {
 			for i = pcm_ptr; i < pcm_ptr+(frame_size*this.channels); i++ {
@@ -358,22 +362,22 @@ func (this *OpusDecoder) opus_decode_frame(data []byte, data_ptr int, len int, p
 		}
 		if this.prev_mode == MODE_HYBRID && !(redundancy != 0 && celt_to_silk != 0 && this.prev_redundancy != 0) {
 			this.Celt_Decoder.SetStartBand(0)
-			this.Celt_Decoder.celt_decode_with_ec(SILENCE, 0, 2, pcm, pcm_ptr, F2_5, nil, celt_accum)
+			this.Celt_Decoder.Celt_decode_with_ec(SILENCE, 0, 2, pcm, pcm_ptr, F2_5, nil, celt_accum)
 		}
 	}
 
 	if mode != MODE_CELT_ONLY && celt_accum == 0 {
 		for i = 0; i < frame_size*this.channels; i++ {
-			pcm[pcm_ptr+i] = SAT16(int(pcm[pcm_ptr+i]) + int(pcm_silk[i]))
+			pcm[pcm_ptr+i] = inlines.SAT16(int(pcm[pcm_ptr+i]) + int(pcm_silk[i]))
 		}
 	}
-	window := this.Celt_Decoder.GetMode().window
+	window := this.Celt_Decoder.GetMode().Window
 	var redundant_rng = 0
 	if redundancy != 0 && celt_to_silk == 0 {
 		this.Celt_Decoder.ResetState()
 		this.Celt_Decoder.SetStartBand(0)
 
-		this.Celt_Decoder.celt_decode_with_ec(data, data_ptr+len, redundancy_bytes, redundant_audio, 0, F5, nil, 0)
+		this.Celt_Decoder.Celt_decode_with_ec(data, data_ptr+len, redundancy_bytes, redundant_audio, 0, F5, nil, 0)
 		redundant_rng = this.Celt_Decoder.GetFinalRange()
 
 		smooth_fade(pcm, pcm_ptr+this.channels*(frame_size-F2_5), redundant_audio, this.channels*F2_5,
@@ -406,16 +410,16 @@ func (this *OpusDecoder) opus_decode_frame(data []byte, data_ptr int, len int, p
 
 	if this.decode_gain != 0 {
 
-		gain := celt_exp2(int(MULT16_16_P15(QCONST16(6.48814081e-4, 25), int16(this.decode_gain))))
+		gain := inlines.Celt_exp2(int(inlines.MULT16_16_P15(inlines.QCONST16(6.48814081e-4, 25), int16(this.decode_gain))))
 		for i = pcm_ptr; i < pcm_ptr+(frame_size*this.channels); i++ {
-			x := MULT16_32_P16(pcm[i], gain)
-			pcm[i] = int16(SATURATE(x, 32767))
+			x := inlines.MULT16_32_P16(pcm[i], gain)
+			pcm[i] = int16(inlines.SATURATE(x, 32767))
 		}
 	}
 	if len <= 1 {
 		this.rangeFinal = 0
 	} else {
-		this.rangeFinal = int(dec.rng) ^ redundant_rng
+		this.rangeFinal = int(dec.Rng) ^ redundant_rng
 	}
 
 	this.prev_mode = mode
@@ -454,7 +458,7 @@ func (this *OpusDecoder) opus_decode_native(data []byte, data_ptr int, len int, 
 			}
 			pcm_count += ret
 		}
-		OpusAssert(pcm_count == frame_size)
+		inlines.OpusAssert(pcm_count == frame_size)
 		this.last_packet_duration = pcm_count
 		return pcm_count
 	} else if len < 0 {
@@ -493,7 +497,7 @@ func (this *OpusDecoder) opus_decode_native(data []byte, data_ptr int, len int, 
 				this.last_packet_duration = duration_copy
 				return ret
 			}
-			OpusAssert(ret == frame_size-packet_frame_size)
+			inlines.OpusAssert(ret == frame_size-packet_frame_size)
 		}
 		this.mode = packet_mode
 		this.bandwidth = packet_bandwidth
@@ -524,7 +528,7 @@ func (this *OpusDecoder) opus_decode_native(data []byte, data_ptr int, len int, 
 		if ret < 0 {
 			return ret
 		}
-		OpusAssert(ret == packet_frame_size)
+		inlines.OpusAssert(ret == packet_frame_size)
 		data_ptr += int(size[i])
 		nb_samples += ret
 	}
@@ -556,7 +560,7 @@ func (this *OpusDecoder) Decode(in_data []byte, in_data_offset int, len int, out
 }
 
 func (this *OpusDecoder) DecodeBytes(in_data []byte, in_data_offset int, len int, out_pcm []byte, out_pcm_offset int, frame_size int, decode_fec bool) (int, error) {
-	maxSamples := IMIN(frame_size, 5760)
+	maxSamples := inlines.IMIN(frame_size, 5760)
 	spcm := make([]int16, maxSamples*this.channels)
 	decSamples, err := this.Decode(in_data, in_data_offset, len, spcm, 0, frame_size, decode_fec)
 	if err != nil {

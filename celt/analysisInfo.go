@@ -1,32 +1,32 @@
 package celt
 
 type AnalysisInfo struct {
-	enabled        bool
-	valid          int
-	tonality       float32
-	tonality_slope float32
-	noisiness      float32
-	activity       float32
-	music_prob     float32
-	bandwidth      int
+	Enabled        bool
+	Valid          int
+	Tonality       float32
+	Tonality_slope float32
+	Noisiness      float32
+	Activity       float32
+	Music_prob     float32
+	Bandwidth      int
 }
 
 func (a *AnalysisInfo) Assign(other *AnalysisInfo) {
-	a.valid = other.valid
-	a.tonality = other.tonality
-	a.tonality_slope = other.tonality_slope
-	a.noisiness = other.noisiness
-	a.activity = other.activity
-	a.music_prob = other.music_prob
-	a.bandwidth = other.bandwidth
+	a.Valid = other.Valid
+	a.Tonality = other.Tonality
+	a.Tonality_slope = other.Tonality_slope
+	a.Noisiness = other.Noisiness
+	a.Activity = other.Activity
+	a.Music_prob = other.Music_prob
+	a.Bandwidth = other.Bandwidth
 }
 
 func (a *AnalysisInfo) Reset() {
-	a.valid = 0
-	a.tonality = 0
-	a.tonality_slope = 0
-	a.noisiness = 0
-	a.activity = 0
-	a.music_prob = 0
-	a.bandwidth = 0
+	a.Valid = 0
+	a.Tonality = 0
+	a.Tonality_slope = 0
+	a.Noisiness = 0
+	a.Activity = 0
+	a.Music_prob = 0
+	a.Bandwidth = 0
 }

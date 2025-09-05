@@ -98,7 +98,7 @@ func opus_multistream_packet_validate(data []byte, data_ptr int, len int, nb_str
 
 func (this *OpusMSDecoder) opus_multistream_decode_native(data []byte, data_ptr int, len int, pcm []int16, pcm_ptr int, frame_size int, decode_fec int, soft_clip int) int {
 	Fs := this.getSampleRate()
-	frame_size = IMIN(frame_size, Fs/25*3)
+	frame_size = inlines.IMIN(frame_size, Fs/25*3)
 	buf := make([]int16, 2*frame_size)
 	decoder_ptr := 0
 	do_plc := 0

@@ -350,7 +350,7 @@ func amp2Log2(m *CeltMode, effEnd int, end int, bandE [][]int, bandLogE [][]int,
 	}
 }
 
-func amp2Log2Ptr(m *CeltMode, effEnd int, end int, bandE []int, bandLogE []int, bandLogEPtr int, C int) {
+func Amp2Log2Ptr(m *CeltMode, effEnd int, end int, bandE []int, bandLogE []int, bandLogEPtr int, C int) {
 	for c := 0; c < C; c++ {
 		for i := 0; i < effEnd; i++ {
 			bandLogE[bandLogEPtr+c*m.nbEBands+i] = inlines.Celt_log2(inlines.SHL32(int(bandE[i+c*m.nbEBands]), 2)) - inlines.SHL16Int(int(CeltTables.EMeans[i]), 6)

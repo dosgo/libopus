@@ -8,7 +8,7 @@ type EncControlState struct {
 	minInternalSampleRate     int
 	desiredInternalSampleRate int
 	payloadSize_ms            int
-	bitRate                   int
+	BitRate                   int
 	packetLossPercentage      int
 	complexity                int
 	useInBandFEC              int
@@ -33,7 +33,7 @@ func (s *EncControlState) Reset() {
 	s.minInternalSampleRate = 0
 	s.desiredInternalSampleRate = 0
 	s.payloadSize_ms = 0
-	s.bitRate = 0
+	s.BitRate = 0
 	s.packetLossPercentage = 0
 	s.complexity = 0
 	s.useInBandFEC = 0

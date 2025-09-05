@@ -192,7 +192,7 @@ func silk_biquad_alt(
 	}
 }
 
-func silk_biquad_alt_ptr(
+func Silk_biquad_alt_ptr(
 	input []int16,
 	input_ptr int,
 	B_Q28 []int,

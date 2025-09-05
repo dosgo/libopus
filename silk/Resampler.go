@@ -97,7 +97,7 @@ func silk_resampler_init(S *SilkResamplerState, Fs_Hz_in int, Fs_Hz_out int, for
 	return 0
 }
 
-func silk_resampler(S *SilkResamplerState, output []int16, output_ptr int, input []int16, input_ptr int, inLen int) int {
+func Silk_resampler(S *SilkResamplerState, output []int16, output_ptr int, input []int16, input_ptr int, inLen int) int {
 	inlines.OpusAssert(inLen >= S.Fs_in_kHz)
 	inlines.OpusAssert(S.inputDelay <= S.Fs_in_kHz)
 

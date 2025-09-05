@@ -178,7 +178,7 @@ func (d *SilkChannelDecoder) silk_decoder_set_fs(fs_kHz, fs_API_Hz int) int {
 	return ret
 }
 
-func (d *SilkChannelDecoder) silk_decode_frame(psRangeDec *comm.EntropyCoder, pOut []int16, pOut_ptr int, pN *BoxedValueInt, lostFlag, condCoding int) int {
+func (d *SilkChannelDecoder) silk_decode_frame(psRangeDec *comm.EntropyCoder, pOut []int16, pOut_ptr int, pN *comm.BoxedValueInt, lostFlag, condCoding int) int {
 	thisCtrl := NewSilkDecoderControl()
 	var L, mv_len, ret int = 0, 0, 0
 

@@ -18,7 +18,7 @@ var inv_table = []int16{
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2,
 }
 
-func compute_vbr(mode *CeltMode, analysis *AnalysisInfo, base_target int, LM int, bitrate int, lastCodedBands int, C int, intensity int, constrained_vbr int, stereo_saving int, tot_boost int, tf_estimate int, pitch_change int, maxDepth int, variable_duration OpusFramesize, lfe int, has_surround_mask int, surround_masking int, temporal_vbr int) int {
+func compute_vbr(mode *CeltMode, analysis *AnalysisInfo, base_target int, LM int, bitrate int, lastCodedBands int, C int, intensity int, constrained_vbr int, stereo_saving int, tot_boost int, tf_estimate int, pitch_change int, maxDepth int, variable_duration int, lfe int, has_surround_mask int, surround_masking int, temporal_vbr int) int {
 	var target int
 	var coded_bins int
 	var coded_bands int
@@ -41,8 +41,8 @@ func compute_vbr(mode *CeltMode, analysis *AnalysisInfo, base_target int, LM int
 	}
 
 	target = base_target
-	if analysis.enabled && analysis.valid != 0 && analysis.activity < 0.4 {
-		target -= int(float32(coded_bins<<BITRES) * (0.4 - analysis.activity))
+	if analysis.Enabled && analysis.Valid != 0 && analysis.Activity < 0.4 {
+		target -= int(float32(coded_bins<<BITRES) * (0.4 - analysis.Activity))
 	}
 
 	if C == 2 {
@@ -66,10 +66,10 @@ func compute_vbr(mode *CeltMode, analysis *AnalysisInfo, base_target int, LM int
 	}
 	target += int(inlines.SHL32(inlines.MULT16_32_Q15(int16(tf_estimate)-int16(tf_calibration), int(target)), 1))
 
-	if analysis.enabled && analysis.valid != 0 && lfe == 0 {
+	if analysis.Enabled && analysis.Valid != 0 && lfe == 0 {
 		var tonal_target int
 		var tonal float32
-		tonal = inlines.MAX16Float(0, analysis.tonality-0.15) - 0.09
+		tonal = inlines.MAX16Float(0, analysis.Tonality-0.15) - 0.09
 		tonal_target = target + int(float32(coded_bins<<BITRES)*1.2*tonal)
 		if pitch_change != 0 {
 			tonal_target += int(float32(coded_bins<<BITRES) * 0.8)
@@ -244,7 +244,7 @@ func compute_mdcts(mode *CeltMode, shortBlocks int, input [][]int, output [][]in
 
 	for c := 0; c < CC; c++ {
 		for b := 0; b < B; b++ {
-			clt_mdct_forward(mode.mdct, input[c], b*N, output[c], b, mode.window, overlap, shift, B)
+			Clt_mdct_forward(mode.Mdct, input[c], b*N, output[c], b, mode.Window, overlap, shift, B)
 		}
 	}
 
@@ -267,7 +267,7 @@ func compute_mdcts(mode *CeltMode, shortBlocks int, input [][]int, output [][]in
 	}
 }
 
-func celt_preemphasis1(
+func Celt_preemphasis1(
 	pcmp []int16, // short[] pcmp
 	inp []int, // int[] inp
 	inp_ptr int, // int inp_ptr
@@ -324,7 +324,7 @@ func celt_preemphasis1(
 	mem.Val = m
 }
 
-func celt_preemphasis(pcmp []int16, pcmp_ptr int, inp []int, inp_ptr int, N int, CC int, upsample int, coef []int, mem *BoxedValueInt, clip int) {
+func celt_preemphasis(pcmp []int16, pcmp_ptr int, inp []int, inp_ptr int, N int, CC int, upsample int, coef []int, mem *comm.BoxedValueInt, clip int) {
 	coef0 := coef[0]
 	m := mem.Val
 
@@ -592,8 +592,8 @@ func alloc_trim_analysis(m *CeltMode, X [][]int, bandLogE [][]int, end int, LM i
 	trim -= temp
 	trim -= inlines.SHR16Int(surround_trim, CeltConstants.DB_SHIFT-8)
 	trim = trim - 2*inlines.SHR16Int(tf_estimate, 14-8)
-	if analysis.enabled && analysis.valid != 0 {
-		temp2 := int(512 * (analysis.tonality_slope + 0.05))
+	if analysis.Enabled && analysis.Valid != 0 {
+		temp2 := int(512 * (analysis.Tonality_slope + 0.05))
 		temp2 = inlines.MIN16Int(512, temp2)
 		temp2 = inlines.MAX16Int(-512, temp2)
 		trim -= temp2
@@ -1074,10 +1074,10 @@ func celt_synthesis(mode *CeltMode, X [][]int, out_syn [][]int, out_syn_ptrs []i
 		//System.arraycopy(freq, 0, out_syn[1], freq2, N)
 		copy(out_syn[1][freq2:freq2+N], freq)
 		for b = 0; b < B; b++ {
-			clt_mdct_backward(mode.mdct, out_syn[1], freq2+b, out_syn[0], out_syn_ptrs[0]+(NB*b), mode.window, overlap, shift, B)
+			clt_mdct_backward(mode.Mdct, out_syn[1], freq2+b, out_syn[0], out_syn_ptrs[0]+(NB*b), mode.Window, overlap, shift, B)
 		}
 		for b = 0; b < B; b++ {
-			clt_mdct_backward(mode.mdct, freq, b, out_syn[1], out_syn_ptrs[1]+(NB*b), mode.window, overlap, shift, B)
+			clt_mdct_backward(mode.Mdct, freq, b, out_syn[1], out_syn_ptrs[1]+(NB*b), mode.Window, overlap, shift, B)
 		}
 	} else if CC == 1 && C == 2 {
 		/* Downmixing a stereo stream to mono */
@@ -1091,7 +1091,7 @@ func celt_synthesis(mode *CeltMode, X [][]int, out_syn [][]int, out_syn_ptrs []i
 			freq[i] = inlines.HALF32(inlines.ADD32(freq[i], out_syn[0][freq2+i]))
 		}
 		for b = 0; b < B; b++ {
-			clt_mdct_backward(mode.mdct, freq, b, out_syn[0], out_syn_ptrs[0]+(NB*b), mode.window, overlap, shift, B)
+			clt_mdct_backward(mode.Mdct, freq, b, out_syn[0], out_syn_ptrs[0]+(NB*b), mode.Window, overlap, shift, B)
 		}
 	} else {
 		/* Normal case (mono or stereo) */
@@ -1100,7 +1100,7 @@ func celt_synthesis(mode *CeltMode, X [][]int, out_syn [][]int, out_syn_ptrs []i
 			denormalise_bands(mode, X[c], freq, 0, oldBandE, c*nbEBands, start, effEnd, M,
 				downsample, silence)
 			for b = 0; b < B; b++ {
-				clt_mdct_backward(mode.mdct, freq, b, out_syn[c], out_syn_ptrs[c]+(NB*b), mode.window, overlap, shift, B)
+				clt_mdct_backward(mode.Mdct, freq, b, out_syn[c], out_syn_ptrs[c]+(NB*b), mode.Window, overlap, shift, B)
 			}
 			c++
 			if c < CC {

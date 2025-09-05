@@ -59,9 +59,9 @@ func test() {
 
 		bytesEncoded, err := encoder.Encode(pcm, 0, packetSamples, data_packet, 0, 1275)
 		if i == 4 {
-			opus.Debug = false
+			//opus.Debug = false
 		} else {
-			opus.Debug = false
+			//opus.Debug = false
 
 		}
 
@@ -109,9 +109,9 @@ func test1() {
 
 		fmt.Printf("imput md5:%s\r\n", ByteSliceToMD5(inBuf))
 		if i == 20 {
-			opus.Debug = false
+			//opus.Debug = false
 		} else {
-			opus.Debug = false
+			//opus.Debug = false
 
 		}
 		bytesEncoded, err := encoder.Encode(pcm, 0, packetSamples, data_packet, 0, 1275)

@@ -229,7 +229,7 @@ func opus_packet_parse_impl(data []byte, data_ptr, len_val, self_delimited int, 
 		}
 		/* Number of frames encoded in bits 0 to 5 */
 
-		ch = SignedByteToUnsignedInt(int8(data[data_ptr]))
+		ch = inlines.SignedByteToUnsignedInt(int8(data[data_ptr]))
 		data_ptr++
 		count = ch & 0x3F
 
@@ -245,7 +245,7 @@ func opus_packet_parse_impl(data []byte, data_ptr, len_val, self_delimited int, 
 				if len_val <= 0 {
 					return OpusError.OPUS_INVALID_PACKET
 				}
-				p = SignedByteToUnsignedInt(int8(data[data_ptr]))
+				p = inlines.SignedByteToUnsignedInt(int8(data[data_ptr]))
 				data_ptr++
 				len_val--
 				if p == 255 {

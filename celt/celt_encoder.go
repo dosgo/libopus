@@ -5,6 +5,7 @@ import (
 
 	"github.com/dosgo/libopus/comm"
 	"github.com/dosgo/libopus/comm/arrayUtil"
+	"github.com/dosgo/libopus/opusConstants"
 )
 
 type CeltEncoder struct {
@@ -24,7 +25,7 @@ type CeltEncoder struct {
 	constrained_vbr   int
 	loss_rate         int
 	lsb_depth         int
-	variable_duration OpusFramesize
+	variable_duration int
 	lfe               int
 	rng               int
 	spread_decision   int
@@ -157,7 +158,7 @@ func (this *CeltEncoder) opus_custom_encoder_init_arch(mode *CeltMode, channels 
 	this.signalling = 1
 	this.constrained_vbr = 1
 	this.clip = 1
-	this.bitrate = OPUS_BITRATE_MAX
+	this.bitrate = opusConstants.OPUS_BITRATE_MAX
 	this.vbr = 0
 	this.force_intra = 0
 	this.complexity = 5
@@ -264,7 +265,7 @@ func (this *CeltEncoder) run_prefilter(input [][]int, prefilter_mem [][]int, CC 
 		if offset != 0 {
 			comb_filter(input[c][:overlap], overlap, pre[c][:CeltConstants.COMBFILTER_MAXPERIOD], CeltConstants.COMBFILTER_MAXPERIOD, this.prefilter_period, this.prefilter_period, offset, -this.prefilter_gain, -this.prefilter_gain, this.prefilter_tapset, this.prefilter_tapset, nil, 0)
 		}
-		comb_filter(input[c][overlap:overlap+offset], overlap+offset, pre[c][CeltConstants.COMBFILTER_MAXPERIOD+offset:], CeltConstants.COMBFILTER_MAXPERIOD+offset, this.prefilter_period, pitch.Val, N-offset, -this.prefilter_gain, -gain1, this.prefilter_tapset, prefilter_tapset, mode.window, overlap)
+		comb_filter(input[c][overlap:overlap+offset], overlap+offset, pre[c][CeltConstants.COMBFILTER_MAXPERIOD+offset:], CeltConstants.COMBFILTER_MAXPERIOD+offset, this.prefilter_period, pitch.Val, N-offset, -this.prefilter_gain, -gain1, this.prefilter_tapset, prefilter_tapset, mode.Window, overlap)
 		copy(this.in_mem[c], input[c][N:N+overlap])
 		if N > CeltConstants.COMBFILTER_MAXPERIOD {
 			copy(prefilter_mem[c], pre[c][N:N+CeltConstants.COMBFILTER_MAXPERIOD])
@@ -277,7 +278,7 @@ func (this *CeltEncoder) run_prefilter(input [][]int, prefilter_mem [][]int, CC 
 	return pf_on
 }
 
-func (this *CeltEncoder) celt_encode_with_ec(pcm []int16, pcm_ptr int, frame_size int, compressed []byte, compressed_ptr int, nbCompressedBytes int, enc *EntropyCoder) int {
+func (this *CeltEncoder) celt_encode_with_ec(pcm []int16, pcm_ptr int, frame_size int, compressed []byte, compressed_ptr int, nbCompressedBytes int, enc *comm.EntropyCoder) int {
 	//PrintFuncArgs(pcm, pcm_ptr, frame_size, compressed, compressed_ptr, nbCompressedBytes, enc)
 
 	var i, c, N int
@@ -370,7 +371,7 @@ func (this *CeltEncoder) celt_encode_with_ec(pcm []int16, pcm_ptr int, frame_siz
 		tell = 1
 		nbFilledBytes = 0
 	} else {
-		tell = enc.tell()
+		tell = enc.Tell()
 		nbFilledBytes = (tell + 4) >> 3
 	}
 
@@ -380,7 +381,7 @@ func (this *CeltEncoder) celt_encode_with_ec(pcm []int16, pcm_ptr int, frame_siz
 	nbCompressedBytes = inlines.IMIN(nbCompressedBytes, 1275)
 	nbAvailableBytes = nbCompressedBytes - nbFilledBytes
 
-	if this.vbr != 0 && this.bitrate != OPUS_BITRATE_MAX {
+	if this.vbr != 0 && this.bitrate != opusConstants.OPUS_BITRATE_MAX {
 		den := mode.Fs >> BITRES
 		vbr_rate = (this.bitrate*frame_size + (den >> 1)) / den
 		effectiveBytes = vbr_rate >> (3 + BITRES)
@@ -391,18 +392,18 @@ func (this *CeltEncoder) celt_encode_with_ec(pcm []int16, pcm_ptr int, frame_siz
 		if tell > 1 {
 			tmp += tell
 		}
-		if this.bitrate != OPUS_BITRATE_MAX {
+		if this.bitrate != opusConstants.OPUS_BITRATE_MAX {
 			nbCompressedBytes = inlines.IMAX(2, inlines.IMIN(nbCompressedBytes, (tmp+4*mode.Fs)/(8*mode.Fs)-comm.BoolToInt(this.signalling != 0)))
 		}
 		effectiveBytes = nbCompressedBytes
 	}
-	if this.bitrate != OPUS_BITRATE_MAX {
+	if this.bitrate != opusConstants.OPUS_BITRATE_MAX {
 		equiv_rate = this.bitrate - (40*C+20)*((400>>LM)-50)
 	}
 
 	if enc == nil {
-		enc = NewEntropyCoder()
-		enc.enc_init(compressed, compressed_ptr, nbCompressedBytes)
+		enc = comm.NewEntropyCoder()
+		enc.Enc_init(compressed, compressed_ptr, nbCompressedBytes)
 	}
 
 	if vbr_rate > 0 {
@@ -426,7 +427,7 @@ func (this *CeltEncoder) celt_encode_with_ec(pcm []int16, pcm_ptr int, frame_siz
 			if max_allowed < nbAvailableBytes {
 				nbCompressedBytes = nbFilledBytes + max_allowed
 				nbAvailableBytes = max_allowed
-				enc.enc_shrink(nbCompressedBytes)
+				enc.Enc_shrink(nbCompressedBytes)
 			}
 		}
 	}
@@ -439,12 +440,12 @@ func (this *CeltEncoder) celt_encode_with_ec(pcm []int16, pcm_ptr int, frame_siz
 
 	input = arrayUtil.InitTwoDimensionalArrayInt(CC, N+overlap)
 
-	sample_max = MAX32(this.overlap_max, int(celt_maxabs32Short(pcm, pcm_ptr, C*(N-overlap)/this.upsample)))
-	this.overlap_max = int(celt_maxabs32Short(pcm, pcm_ptr+(C*(N-overlap)/this.upsample), C*overlap/this.upsample))
-	sample_max = MAX32(sample_max, this.overlap_max)
+	sample_max = inlines.MAX32(this.overlap_max, int(inlines.Celt_maxabs32Short(pcm, pcm_ptr, C*(N-overlap)/this.upsample)))
+	this.overlap_max = int(inlines.Celt_maxabs32Short(pcm, pcm_ptr+(C*(N-overlap)/this.upsample), C*overlap/this.upsample))
+	sample_max = inlines.MAX32(sample_max, this.overlap_max)
 	silence = comm.BoolToInt(sample_max == 0)
 	if tell == 1 {
-		enc.enc_bit_logp(silence, 15)
+		enc.Enc_bit_logp(silence, 15)
 	} else {
 		silence = 0
 	}
@@ -455,12 +456,12 @@ func (this *CeltEncoder) celt_encode_with_ec(pcm []int16, pcm_ptr int, frame_siz
 			nbCompressedBytes = effectiveBytes
 			total_bits = nbCompressedBytes * 8
 			nbAvailableBytes = 2
-			enc.enc_shrink(nbCompressedBytes)
+			enc.Enc_shrink(nbCompressedBytes)
 		}
 		/* Pretend we've filled all the remaining bits with zeros
 		   (that's what the initialiser did anyway) */
 		tell = nbCompressedBytes * 8
-		enc.nbits_total += tell - enc.tell()
+		enc.Nbits_total += tell - enc.Tell()
 	}
 	c = 0
 	boxed_memE := comm.BoxedValueInt{0}
@@ -492,26 +493,26 @@ func (this *CeltEncoder) celt_encode_with_ec(pcm []int16, pcm_ptr int, frame_siz
 	gain1 = boxed_gain1.Val
 	qg = boxed_qg.Val
 
-	if (gain1 > int(math.Trunc(0.5+(.4)*float64(1<<(15)))) || this.prefilter_gain > int(math.Trunc(0.5+(.4)*float64(1<<(15))))) && (this.analysis.valid == 0 || this.analysis.tonality > .3) && (pitch_index > int(1.26*float64(this.prefilter_period)) || pitch_index < int(0.79*float64(this.prefilter_period))) {
+	if (gain1 > int(math.Trunc(0.5+(.4)*float64(1<<(15)))) || this.prefilter_gain > int(math.Trunc(0.5+(.4)*float64(1<<(15))))) && (this.analysis.Valid == 0 || this.analysis.Tonality > .3) && (pitch_index > int(1.26*float64(this.prefilter_period)) || pitch_index < int(0.79*float64(this.prefilter_period))) {
 		pitch_change = 1
 	}
 
 	if pf_on == 0 {
 		if start == 0 && tell+16 <= total_bits {
-			enc.enc_bit_logp(0, 1)
+			enc.Enc_bit_logp(0, 1)
 		}
 	} else {
 		/*This block is not gated by a total bits check only because
 		of the nbAvailableBytes check above.*/
 		var octave int
-		enc.enc_bit_logp(1, 1)
+		enc.Enc_bit_logp(1, 1)
 		pitch_index += 1
 		octave = inlines.EC_ILOG(int64(pitch_index)) - 5
-		enc.enc_uint(int64(octave), 6)
-		enc.enc_bits(int64(pitch_index-(16<<octave)), 4+octave)
+		enc.Enc_uint(int64(octave), 6)
+		enc.Enc_bits(int64(pitch_index-(16<<octave)), 4+octave)
 		pitch_index -= 1
-		enc.enc_bits(int64(qg), 3)
-		enc.enc_icdf(prefilter_tapset, tapset_icdf, 2)
+		enc.Enc_bits(int64(qg), 3)
+		enc.Enc_icdf(prefilter_tapset, tapset_icdf, 2)
 	}
 
 	isTransient = 0
@@ -525,7 +526,7 @@ func (this *CeltEncoder) celt_encode_with_ec(pcm []int16, pcm_ptr int, frame_siz
 		tf_chan = boxed_tf_chan.Val
 	}
 
-	if LM > 0 && enc.tell()+3 <= total_bits {
+	if LM > 0 && enc.Tell()+3 <= total_bits {
 		if isTransient != 0 {
 			shortBlocks = M
 		}
@@ -541,13 +542,13 @@ func (this *CeltEncoder) celt_encode_with_ec(pcm []int16, pcm_ptr int, frame_siz
 	bandE = arrayUtil.InitTwoDimensionalArrayInt(CC, nbEBands)
 	bandLogE = arrayUtil.InitTwoDimensionalArrayInt(CC, nbEBands)
 
-	secondMdct = comm.comm.BoolToInt(shortBlocks != 0 && this.complexity >= 8)
+	secondMdct = comm.BoolToInt(shortBlocks != 0 && this.complexity >= 8)
 	bandLogE2 = arrayUtil.InitTwoDimensionalArrayInt(CC, nbEBands)
 
 	//Arrays.MemSet(bandLogE2, 0, C * nbEBands); // not explicitly needed
 	if secondMdct != 0 {
 		compute_mdcts(mode, 0, input, freq, C, CC, LM, this.upsample)
-		compute_band_energies(mode, freq, bandE, effEnd, C, LM)
+		Compute_band_energies(mode, freq, bandE, effEnd, C, LM)
 		amp2Log2(mode, effEnd, end, bandE, bandLogE2, C)
 		for i = 0; i < nbEBands; i++ {
 			bandLogE2[0][i] += inlines.HALF16Int(inlines.SHL16Int(LM, CeltConstants.DB_SHIFT))
@@ -563,7 +564,7 @@ func (this *CeltEncoder) celt_encode_with_ec(pcm []int16, pcm_ptr int, frame_siz
 	if CC == 2 && C == 1 {
 		tf_chan = 0
 	}
-	compute_band_energies(mode, freq, bandE, effEnd, C, LM)
+	Compute_band_energies(mode, freq, bandE, effEnd, C, LM)
 
 	if this.lfe != 0 {
 		for i = 2; i < end; i++ {
@@ -682,12 +683,12 @@ func (this *CeltEncoder) celt_encode_with_ec(pcm []int16, pcm_ptr int, frame_siz
 
 	/* Last chance to catch any transient we might have missed in the
 	   time-domain analysis */
-	if LM > 0 && enc.tell()+3 <= total_bits && isTransient == 0 && this.complexity >= 5 && this.lfe == 0 {
+	if LM > 0 && enc.Tell()+3 <= total_bits && isTransient == 0 && this.complexity >= 5 && this.lfe == 0 {
 		if patch_transient_decision(bandLogE, this.oldBandE, nbEBands, start, end, C) != 0 {
 			isTransient = 1
 			shortBlocks = M
 			compute_mdcts(mode, shortBlocks, input, freq, C, CC, LM, this.upsample)
-			compute_band_energies(mode, freq, bandE, effEnd, C, LM)
+			Compute_band_energies(mode, freq, bandE, effEnd, C, LM)
 			amp2Log2(mode, effEnd, end, bandE, bandLogE, C)
 			/* Compensate for the scaling of short vs long mdcts */
 			for i = 0; i < nbEBands; i++ {
@@ -702,8 +703,8 @@ func (this *CeltEncoder) celt_encode_with_ec(pcm []int16, pcm_ptr int, frame_siz
 		}
 	}
 
-	if LM > 0 && enc.tell()+3 <= total_bits {
-		enc.enc_bit_logp(isTransient, 3)
+	if LM > 0 && enc.Tell()+3 <= total_bits {
+		enc.Enc_bit_logp(isTransient, 3)
 	}
 
 	X = arrayUtil.InitTwoDimensionalArrayInt(C, N)
@@ -754,7 +755,7 @@ func (this *CeltEncoder) celt_encode_with_ec(pcm []int16, pcm_ptr int, frame_siz
 
 	tf_encode(start, end, isTransient, tf_res, LM, tf_select, enc)
 
-	if enc.tell()+4 <= total_bits {
+	if enc.Tell()+4 <= total_bits {
 		if this.lfe != 0 {
 			this.tapset_decision = 0
 			this.spread_decision = Spread.SPREAD_NORMAL
@@ -776,7 +777,7 @@ func (this *CeltEncoder) celt_encode_with_ec(pcm []int16, pcm_ptr int, frame_siz
 			this.hf_average = boxed_hf_average.Val
 
 		}
-		enc.enc_icdf(this.spread_decision, spread_icdf, 5)
+		enc.Enc_icdf(this.spread_decision, spread_icdf, 5)
 	}
 
 	offsets = make([]int, nbEBands)
@@ -797,7 +798,7 @@ func (this *CeltEncoder) celt_encode_with_ec(pcm []int16, pcm_ptr int, frame_siz
 	dynalloc_logp = 6
 	total_bits <<= BITRES
 	total_boost = 0
-	tell = enc.tell_frac()
+	tell = enc.Tell_frac()
 	for i = start; i < end; i++ {
 		var width, quanta int
 		var dynalloc_loop_logp int
@@ -814,8 +815,8 @@ func (this *CeltEncoder) celt_encode_with_ec(pcm []int16, pcm_ptr int, frame_siz
 			var flag int
 			flag = comm.BoolToInt(j < offsets[i])
 
-			enc.enc_bit_logp(flag, dynalloc_loop_logp)
-			tell = enc.tell_frac()
+			enc.Enc_bit_logp(flag, dynalloc_loop_logp)
+			tell = enc.Tell_frac()
 			if flag == 0 {
 				break
 			}
@@ -852,8 +853,8 @@ func (this *CeltEncoder) celt_encode_with_ec(pcm []int16, pcm_ptr int, frame_siz
 				this.intensity, surround_trim)
 			this.stereo_saving = boxed_stereo_saving.Val
 		}
-		enc.enc_icdf(alloc_trim, trim_icdf, 7)
-		tell = enc.tell_frac()
+		enc.Enc_icdf(alloc_trim, trim_icdf, 7)
+		tell = enc.Tell_frac()
 	}
 
 	/* Variable bitrate */
@@ -942,7 +943,7 @@ func (this *CeltEncoder) celt_encode_with_ec(pcm []int16, pcm_ptr int, frame_siz
 		nbCompressedBytes = inlines.IMIN(nbCompressedBytes, nbAvailableBytes+nbFilledBytes)
 		/*printf("%d\n", nbCompressedBytes*50*8);*/
 		/* This moves the raw bits to take into account the new compressed size */
-		enc.enc_shrink(nbCompressedBytes)
+		enc.Enc_shrink(nbCompressedBytes)
 	}
 
 	/* Bit allocation */
@@ -951,7 +952,7 @@ func (this *CeltEncoder) celt_encode_with_ec(pcm []int16, pcm_ptr int, frame_siz
 	fine_priority = make([]int, nbEBands)
 
 	/* bits =    packet size                                     - where we are                        - safety*/
-	bits = ((nbCompressedBytes * 8) << BITRES) - enc.tell_frac() - 1
+	bits = ((nbCompressedBytes * 8) << BITRES) - enc.Tell_frac() - 1
 	anti_collapse_rsv = 0
 	if isTransient != 0 && LM >= 2 && bits >= ((LM+2)<<BITRES) {
 		anti_collapse_rsv = (1 << BITRES)
@@ -960,7 +961,7 @@ func (this *CeltEncoder) celt_encode_with_ec(pcm []int16, pcm_ptr int, frame_siz
 	bits -= anti_collapse_rsv
 	signalBandwidth = end - 1
 
-	if this.analysis.enabled && this.analysis.valid != 0 {
+	if this.analysis.Enabled && this.analysis.Valid != 0 {
 		var min_bandwidth int
 		if equiv_rate < 32000*C {
 			min_bandwidth = 13
@@ -973,7 +974,7 @@ func (this *CeltEncoder) celt_encode_with_ec(pcm []int16, pcm_ptr int, frame_siz
 		} else {
 			min_bandwidth = 20
 		}
-		signalBandwidth = inlines.IMAX(this.analysis.bandwidth, min_bandwidth)
+		signalBandwidth = inlines.IMAX(this.analysis.Bandwidth, min_bandwidth)
 	}
 
 	if this.lfe != 0 {
@@ -1013,10 +1014,10 @@ func (this *CeltEncoder) celt_encode_with_ec(pcm []int16, pcm_ptr int, frame_siz
 
 	if anti_collapse_rsv > 0 {
 		anti_collapse_on = comm.BoolToInt(this.consec_transient < 2)
-		enc.enc_bits(int64(anti_collapse_on), 1)
+		enc.Enc_bits(int64(anti_collapse_on), 1)
 	}
 
-	quant_energy_finalise(mode, start, end, this.oldBandE, error, fine_quant, fine_priority, nbCompressedBytes*8-enc.tell(), enc, C)
+	quant_energy_finalise(mode, start, end, this.oldBandE, error, fine_quant, fine_priority, nbCompressedBytes*8-enc.Tell(), enc, C)
 
 	if silence != 0 {
 		for i = 0; i < nbEBands; i++ {
@@ -1085,13 +1086,13 @@ func (this *CeltEncoder) celt_encode_with_ec(pcm []int16, pcm_ptr int, frame_siz
 	} else {
 		this.consec_transient = 0
 	}
-	this.rng = int(enc.rng)
+	this.rng = int(enc.Rng)
 
 	/* If there's any room left (can only happen for very high rates),
 	   it's already filled with zeros */
-	enc.enc_done()
+	enc.Enc_done()
 
-	if enc.get_error() != 0 {
+	if enc.Get_error() != 0 {
 		return OpusError.OPUS_INTERNAL_ERROR
 	} else {
 		return nbCompressedBytes
@@ -1166,7 +1167,7 @@ func (this *CeltEncoder) SetVBR(value bool) {
 }
 
 func (this *CeltEncoder) SetBitrate(value int) {
-	if value <= 500 && value != OPUS_BITRATE_MAX {
+	if value <= 500 && value != opusConstants.OPUS_BITRATE_MAX {
 		panic("Bitrate out of range")
 	}
 	if value > 260000*this.channels {
@@ -1193,7 +1194,7 @@ func (this *CeltEncoder) GetLSBDepth() int {
 	return this.lsb_depth
 }
 
-func (this *CeltEncoder) SetExpertFrameDuration(value OpusFramesize) {
+func (this *CeltEncoder) SetExpertFrameDuration(value int) {
 	this.variable_duration = value
 }
 

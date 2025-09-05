@@ -34,55 +34,23 @@ Copyright (c) 2007-2008 CSIRO
 	NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 	SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-package celt
+package opusConstants
 
-type CeltMode struct {
-	Fs             int
-	overlap        int
-	nbEBands       int
-	effEBands      int
-	preemph        []int
-	eBands         []int16
-	maxLM          int
-	nbShortMdcts   int
-	shortMdctSize  int
-	nbAllocVectors int
-	allocVectors   []int16
-	logN           []int16
-	Window         []int
-	Mdct           *MDCTLookup
-	cache          *PulseCache
-}
+// Auto/default setting
+const OPUS_AUTO = -1000
 
-var mode48000_960_120 *CeltMode = &CeltMode{
-	Fs:             48000,
-	overlap:        120,
-	nbEBands:       21,
-	effEBands:      21,
-	preemph:        []int{27853, 0, 4096, 8192},
-	eBands:         CeltTables.Eband5ms,
-	maxLM:          3,
-	nbShortMdcts:   8,
-	shortMdctSize:  120,
-	nbAllocVectors: 11,
-	allocVectors:   CeltTables.Band_allocation,
-	logN:           CeltTables.LogN400,
-	Window:         CeltTables.Window120,
-	Mdct: &MDCTLookup{
-		n:        1920,
-		maxshift: 3,
-		Kfft: [4]*FFTState{
-			CeltTables.Fft_state48000_960_0,
-			CeltTables.Fft_state48000_960_1,
-			CeltTables.Fft_state48000_960_2,
-			CeltTables.Fft_state48000_960_3,
-		},
-		trig: CeltTables.Mdct_twiddles960,
-	},
-	cache: &PulseCache{
-		size:  392,
-		index: CeltTables.Cache_index50,
-		bits:  CeltTables.Cache_bits50,
-		caps:  CeltTables.Cache_caps50,
-	},
-}
+// Maximum bitrate
+const OPUS_BITRATE_MAX = -1
+
+// from analysis.c
+const (
+	NB_FRAMES           = 8
+	NB_TBANDS           = 18
+	NB_TOT_BANDS        = 21
+	NB_TONAL_SKIP_BANDS = 9
+	ANALYSIS_BUF_SIZE   = 720
+	// 15 ms at 48 kHz
+	DETECT_SIZE = 200
+
+	MAX_ENCODER_BUFFER = 480
+)

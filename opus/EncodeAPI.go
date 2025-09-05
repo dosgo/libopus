@@ -2,6 +2,9 @@ package opus
 
 import (
 	"math"
+
+	"github.com/dosgo/libopus/comm"
+	"github.com/dosgo/libopus/silk"
 )
 
 func silk_InitEncoder(encState *SilkEncoder, encStatus *EncControlState) int {
@@ -9,12 +12,12 @@ func silk_InitEncoder(encState *SilkEncoder, encStatus *EncControlState) int {
 	encState.Reset()
 	for n := 0; n < ENCODER_NUM_CHANNELS; n++ {
 		ret += silk_init_encoder(encState.state_Fxx[n])
-		OpusAssert(ret == SilkError.SILK_NO_ERROR)
+		inlines.OpusAssert(ret == SilkError.SILK_NO_ERROR)
 	}
 	encState.nChannelsAPI = 1
 	encState.nChannelsInternal = 1
 	ret += silk_QueryEncoder(encState, encStatus)
-	OpusAssert(ret == SilkError.SILK_NO_ERROR)
+	inlines.OpusAssert(ret == SilkError.SILK_NO_ERROR)
 	return ret
 }
 
@@ -35,7 +38,7 @@ func silk_QueryEncoder(encState *SilkEncoder, encStatus *EncControlState) int {
 	encStatus.useInBandFEC = state_Fxx.useInBandFEC
 	encStatus.useDTX = state_Fxx.useDTX
 	encStatus.useCBR = state_Fxx.useCBR
-	encStatus.internalSampleRate = silk_SMULBB(state_Fxx.fs_kHz, 1000)
+	encStatus.internalSampleRate = inlines.Silk_SMULBB(state_Fxx.fs_kHz, 1000)
 	encStatus.allowBandwidthSwitch = state_Fxx.allow_bandwidth_switch
 	if state_Fxx.fs_kHz == 16 && state_Fxx.sLP.mode == 0 {
 		encStatus.inWBmodeWithoutVariableLP = 1
@@ -46,11 +49,11 @@ func silk_QueryEncoder(encState *SilkEncoder, encStatus *EncControlState) int {
 }
 
 func silk_Encode(
-	psEnc *SilkEncoder,
-	encControl *EncControlState,
+	psEnc *silk.SilkEncoder,
+	encControl *silk.EncControlState,
 	samplesIn []int16,
 	nSamplesIn int,
-	psRangeEnc *EntropyCoder,
+	psRangeEnc *comm.EntropyCoder,
 	nBytesOut *BoxedValueInt,
 	prefillFlag int) int {
 	ret := SilkError.SILK_NO_ERROR
@@ -73,7 +76,7 @@ func silk_Encode(
 
 	ret += encControl.check_control_input()
 	if ret != SilkError.SILK_NO_ERROR {
-		OpusAssert(false)
+		inlines.OpusAssert(false)
 		return ret
 	}
 
@@ -116,7 +119,7 @@ func silk_Encode(
 	curr_block = 0
 	if prefillFlag != 0 {
 		if nBlocksOf10ms != 1 {
-			OpusAssert(false)
+			inlines.OpusAssert(false)
 			return SilkError.SILK_ENC_INPUT_INVALID_NO_OF_SAMPLES
 		}
 		tmp_payloadSize_ms = encControl.payloadSize_ms
@@ -129,11 +132,11 @@ func silk_Encode(
 		}
 	} else {
 		if nBlocksOf10ms*encControl.API_sampleRate != 100*nSamplesIn || nSamplesIn < 0 {
-			OpusAssert(false)
+			inlines.OpusAssert(false)
 			return SilkError.SILK_ENC_INPUT_INVALID_NO_OF_SAMPLES
 		}
 		if 1000*nSamplesIn > encControl.payloadSize_ms*encControl.API_sampleRate {
-			OpusAssert(false)
+			inlines.OpusAssert(false)
 			return SilkError.SILK_ENC_INPUT_INVALID_NO_OF_SAMPLES
 		}
 	}
@@ -147,7 +150,7 @@ func silk_Encode(
 		}
 		ret += psEnc.state_Fxx[n].silk_control_encoder(encControl, TargetRate_bps, psEnc.allowBandwidthSwitch, n, force_fs_kHz)
 		if ret != SilkError.SILK_NO_ERROR {
-			OpusAssert(false)
+			inlines.OpusAssert(false)
 			return ret
 		}
 
@@ -160,10 +163,10 @@ func silk_Encode(
 		psEnc.state_Fxx[n].inDTX = psEnc.state_Fxx[n].useDTX
 	}
 
-	OpusAssert(encControl.nChannelsInternal == 1 || psEnc.state_Fxx[0].fs_kHz == psEnc.state_Fxx[1].fs_kHz)
+	inlines.OpusAssert(encControl.nChannelsInternal == 1 || psEnc.state_Fxx[0].fs_kHz == psEnc.state_Fxx[1].fs_kHz)
 
 	nSamplesToBufferMax = 10 * nBlocksOf10ms * psEnc.state_Fxx[0].fs_kHz
-	nSamplesFromInputMax = silk_DIV32_16(nSamplesToBufferMax*psEnc.state_Fxx[0].API_fs_Hz, int(psEnc.state_Fxx[0].fs_kHz*1000))
+	nSamplesFromInputMax = inlines.Silk_DIV32_16(nSamplesToBufferMax*psEnc.state_Fxx[0].API_fs_Hz, int(psEnc.state_Fxx[0].fs_kHz*1000))
 
 	buf = make([]int16, nSamplesFromInputMax)
 
@@ -173,7 +176,7 @@ func silk_Encode(
 		if nSamplesToBuffer > nSamplesToBufferMax {
 			nSamplesToBuffer = nSamplesToBufferMax
 		}
-		nSamplesFromInput = silk_DIV32_16(nSamplesToBuffer*psEnc.state_Fxx[0].API_fs_Hz, int(psEnc.state_Fxx[0].fs_kHz*1000))
+		nSamplesFromInput = inlines.Silk_DIV32_16(nSamplesToBuffer*psEnc.state_Fxx[0].API_fs_Hz, int(psEnc.state_Fxx[0].fs_kHz*1000))
 
 		if encControl.nChannelsAPI == 2 && encControl.nChannelsInternal == 2 {
 			id := psEnc.state_Fxx[0].nFramesEncoded
@@ -193,7 +196,7 @@ func silk_Encode(
 					nSamplesFromInput)
 			*/
 
-			ret += silk_resampler(
+			ret += silk.Silk_resampler(
 				psEnc.state_Fxx[0].resampler_state,
 				psEnc.state_Fxx[0].inputBuf,
 				psEnc.state_Fxx[0].inputBufIx+2,
@@ -210,7 +213,7 @@ func silk_Encode(
 			for n := 0; n < nSamplesFromInput; n++ {
 				buf[n] = samplesIn[samplesIn_ptr+2*n+1]
 			}
-			ret += silk_resampler(
+			ret += silk.Silk_resampler(
 				psEnc.state_Fxx[1].resampler_state,
 				psEnc.state_Fxx[1].inputBuf,
 				psEnc.state_Fxx[1].inputBufIx+2,
@@ -225,7 +228,7 @@ func silk_Encode(
 				buf[n] = int16(sum >> 1)
 			}
 
-			ret += silk_resampler(
+			ret += silk.Silk_resampler(
 				psEnc.state_Fxx[0].resampler_state,
 				psEnc.state_Fxx[0].inputBuf,
 				psEnc.state_Fxx[0].inputBufIx+2,
@@ -234,7 +237,7 @@ func silk_Encode(
 				nSamplesFromInput)
 
 			if psEnc.nPrevChannelsInternal == 2 && psEnc.state_Fxx[0].nFramesEncoded == 0 {
-				ret += silk_resampler(
+				ret += silk.Silk_resampler(
 					psEnc.state_Fxx[1].resampler_state,
 					psEnc.state_Fxx[1].inputBuf,
 					psEnc.state_Fxx[1].inputBufIx+2,
@@ -251,9 +254,9 @@ func silk_Encode(
 
 			psEnc.state_Fxx[0].inputBufIx += nSamplesToBuffer
 		} else {
-			OpusAssert(encControl.nChannelsAPI == 1 && encControl.nChannelsInternal == 1)
+			inlines.OpusAssert(encControl.nChannelsAPI == 1 && encControl.nChannelsInternal == 1)
 			copy(buf, samplesIn[samplesIn_ptr:samplesIn_ptr+nSamplesFromInput])
-			ret += silk_resampler(
+			ret += silk.Silk_resampler(
 				psEnc.state_Fxx[0].resampler_state,
 				psEnc.state_Fxx[0].inputBuf,
 				psEnc.state_Fxx[0].inputBufIx+2,
@@ -269,12 +272,12 @@ func silk_Encode(
 		psEnc.allowBandwidthSwitch = 0
 
 		if psEnc.state_Fxx[0].inputBufIx >= psEnc.state_Fxx[0].frame_length {
-			OpusAssert(psEnc.state_Fxx[0].inputBufIx == psEnc.state_Fxx[0].frame_length)
-			OpusAssert(encControl.nChannelsInternal == 1 || psEnc.state_Fxx[1].inputBufIx == psEnc.state_Fxx[1].frame_length)
+			inlines.OpusAssert(psEnc.state_Fxx[0].inputBufIx == psEnc.state_Fxx[0].frame_length)
+			inlines.OpusAssert(encControl.nChannelsInternal == 1 || psEnc.state_Fxx[1].inputBufIx == psEnc.state_Fxx[1].frame_length)
 
 			if psEnc.state_Fxx[0].nFramesEncoded == 0 && prefillFlag == 0 {
 				iCDF := make([]int16, 2)
-				iCDF[0] = int16(256 - silk_RSHIFT(256, (psEnc.state_Fxx[0].nFramesPerPacket+1)*encControl.nChannelsInternal))
+				iCDF[0] = int16(256 - inlines.Silk_RSHIFT(256, (psEnc.state_Fxx[0].nFramesPerPacket+1)*encControl.nChannelsInternal))
 
 				//iCDF := []int16{0, int16(256 - (256 >> ((psEnc.state_Fxx[0].nFramesPerPacket + 1) * encControl.nChannelsInternal)))}
 				psRangeEnc.enc_icdf(0, iCDF, 8)
@@ -293,7 +296,7 @@ func silk_Encode(
 						psEnc.state_Fxx[n].LBRR_flag = 0
 					}
 					if LBRR_symbol != 0 && psEnc.state_Fxx[n].nFramesPerPacket > 1 {
-						psRangeEnc.enc_icdf(LBRR_symbol-1, silk_LBRR_flags_iCDF_ptr[psEnc.state_Fxx[n].nFramesPerPacket-2], 8)
+						psRangeEnc.Enc_icdf(LBRR_symbol-1, silk_LBRR_flags_iCDF_ptr[psEnc.state_Fxx[n].nFramesPerPacket-2], 8)
 					}
 				}
 
@@ -330,20 +333,20 @@ func silk_Encode(
 
 			silk_HP_variable_cutoff(psEnc.state_Fxx)
 
-			nBits = silk_DIV32_16(int(encControl.bitRate*encControl.payloadSize_ms), 1000)
+			nBits = inlines.Silk_DIV32_16(int(encControl.bitRate*encControl.payloadSize_ms), 1000)
 			if prefillFlag == 0 {
 				nBits -= psEnc.nBitsUsedLBRR
 			}
-			nBits = silk_DIV32_16(int(nBits), int(psEnc.state_Fxx[0].nFramesPerPacket))
+			nBits = inlines.Silk_DIV32_16(int(nBits), int(psEnc.state_Fxx[0].nFramesPerPacket))
 			if encControl.payloadSize_ms == 10 {
 				TargetRate_bps = nBits * 100
 			} else {
 				TargetRate_bps = nBits * 50
 			}
-			TargetRate_bps -= silk_DIV32_16(int(psEnc.nBitsExceeded*1000), TuningParameters.BITRESERVOIR_DECAY_TIME_MS)
+			TargetRate_bps -= inlines.Silk_DIV32_16(int(psEnc.nBitsExceeded*1000), TuningParameters.BITRESERVOIR_DECAY_TIME_MS)
 			if prefillFlag == 0 && psEnc.state_Fxx[0].nFramesEncoded > 0 {
 				bitsBalance := psRangeEnc.tell() - psEnc.nBitsUsedLBRR - nBits*psEnc.state_Fxx[0].nFramesEncoded
-				TargetRate_bps -= silk_DIV32_16(int(bitsBalance*1000), TuningParameters.BITRESERVOIR_DECAY_TIME_MS)
+				TargetRate_bps -= inlines.Silk_DIV32_16(int(bitsBalance*1000), TuningParameters.BITRESERVOIR_DECAY_TIME_MS)
 			}
 			if TargetRate_bps > encControl.bitRate {
 				TargetRate_bps = encControl.bitRate
@@ -449,7 +452,7 @@ func silk_Encode(
 					}
 
 					ret += psEnc.state_Fxx[n].silk_encode_frame(nBytesOut, psRangeEnc, condCoding, maxBits, useCBR)
-					OpusAssert(ret == SilkError.SILK_NO_ERROR)
+					inlines.OpusAssert(ret == SilkError.SILK_NO_ERROR)
 				}
 
 				psEnc.state_Fxx[n].controlled_since_last_payload = 0
@@ -526,7 +529,7 @@ func silk_Encode(
 	} else {
 		encControl.inWBmodeWithoutVariableLP = 0
 	}
-	encControl.internalSampleRate = silk_SMULBB(psEnc.state_Fxx[0].fs_kHz, 1000)
+	encControl.internalSampleRate = inlines.Silk_SMULBB(psEnc.state_Fxx[0].fs_kHz, 1000)
 	if encControl.toMono != 0 {
 		encControl.stereoWidth_Q14 = 0
 	} else {

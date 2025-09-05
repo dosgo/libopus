@@ -2,6 +2,8 @@ package opus
 
 import (
 	"errors"
+
+	"github.com/dosgo/libopus/celt"
 )
 
 type OpusMSEncoder struct {
@@ -98,20 +100,20 @@ func logSum(a, b int) int {
 	var max, diff int
 	if a > b {
 		max = a
-		diff = SUB32(EXTEND32Int(a), EXTEND32Int(b))
+		diff = inlines.SUB32(inlines.EXTEND32Int(a), inlines.EXTEND32Int(b))
 	} else {
 		max = b
-		diff = SUB32(EXTEND32Int(b), EXTEND32Int(a))
+		diff = inlines.SUB32(inlines.EXTEND32Int(b), inlines.EXTEND32Int(a))
 	}
-	if diff >= int(QCONST16(8.0, CeltConstants.DB_SHIFT)) {
+	if diff >= int(inlines.QCONST16(8.0, CeltConstants.DB_SHIFT)) {
 		return max
 	}
-	low := SHR32(diff, CeltConstants.DB_SHIFT-1)
-	frac := SHL16Int(diff-SHL16Int(low, CeltConstants.DB_SHIFT-1), 16-CeltConstants.DB_SHIFT)
-	return max + diff_table[low] + MULT16_16_Q15Int(frac, SUB16Int(diff_table[low+1], diff_table[low]))
+	low := inlines.SHR32(diff, CeltConstants.DB_SHIFT-1)
+	frac := inlines.SHL16Int(diff-inlines.SHL16Int(low, CeltConstants.DB_SHIFT-1), 16-CeltConstants.DB_SHIFT)
+	return max + diff_table[low] + inlines.MULT16_16_Q15Int(frac, inlines.SUB16Int(diff_table[low+1], diff_table[low]))
 }
 
-func surround_analysis(celt_mode *CeltMode, pcm []int16, pcm_ptr int, bandLogE []int, mem, preemph_mem []int, len, overlap, channels, rate int) {
+func surround_analysis(celt_mode *celt.CeltMode, pcm []int16, pcm_ptr int, bandLogE []int, mem, preemph_mem []int, len, overlap, channels, rate int) {
 	var pos [8]int
 	upsample := resampling_factor(rate)
 	frame_size := len * upsample
@@ -134,7 +136,7 @@ func surround_analysis(celt_mode *CeltMode, pcm []int16, pcm_ptr int, bandLogE [
 	for i := range maskLogE {
 		maskLogE[i] = make([]int, 21)
 		for j := range maskLogE[i] {
-			maskLogE[i][j] = -int(QCONST16(28.0, CeltConstants.DB_SHIFT))
+			maskLogE[i][j] = -int(inlines.QCONST16(28.0, CeltConstants.DB_SHIFT))
 		}
 	}
 
@@ -145,10 +147,10 @@ func surround_analysis(celt_mode *CeltMode, pcm []int16, pcm_ptr int, bandLogE [
 		boxed_preemph := BoxedValueInt{preemph_mem[c]}
 		//celt_preemphasis(x, input, overlap, frame_size, 1, upsample, celt_mode.preemph, &boxed_preemph, 0)
 		//celt_preemphasis(x, input, overlap, frame_size, 1, upsample, celt_mode.preemph, boxed_preemph, 0)
-		celt_preemphasis1(x, input, overlap, frame_size, 1, upsample, celt_mode.preemph, &boxed_preemph, 0)
+		celt.Celt_preemphasis1(x, input, overlap, frame_size, 1, upsample, celt_mode.preemph, &boxed_preemph, 0)
 		preemph_mem[c] = boxed_preemph.Val
 
-		clt_mdct_forward(celt_mode.mdct, input, 0, freq[0], 0, celt_mode.window, overlap, celt_mode.maxLM-LM, 1)
+		celt.Clt_mdct_forward(celt_mode.mdct, input, 0, freq[0], 0, celt_mode.window, overlap, celt_mode.maxLM-LM, 1)
 		if upsample != 1 {
 			bound := len
 			for i := 0; i < bound; i++ {
@@ -161,14 +163,14 @@ func surround_analysis(celt_mode *CeltMode, pcm []int16, pcm_ptr int, bandLogE [
 
 		bandE := make([][]int, 1)
 		bandE[0] = make([]int, 21)
-		compute_band_energies(celt_mode, freq, bandE, 21, 1, LM)
-		amp2Log2Ptr(celt_mode, 21, 21, bandE[0], bandLogE, 21*c, 1)
+		celt.Compute_band_energies(celt_mode, freq, bandE, 21, 1, LM)
+		celt.Amp2Log2Ptr(celt_mode, 21, 21, bandE[0], bandLogE, 21*c, 1)
 
 		for i := 1; i < 21; i++ {
-			bandLogE[21*c+i] = MAX16Int(bandLogE[21*c+i], bandLogE[21*c+i-1]-int(QCONST16(1.0, CeltConstants.DB_SHIFT)))
+			bandLogE[21*c+i] = inlines.MAX16Int(bandLogE[21*c+i], bandLogE[21*c+i-1]-int(inlines.QCONST16(1.0, CeltConstants.DB_SHIFT)))
 		}
 		for i := 19; i >= 0; i-- {
-			bandLogE[21*c+i] = MAX16Int(bandLogE[21*c+i], bandLogE[21*c+i+1]-int(QCONST16(2.0, CeltConstants.DB_SHIFT)))
+			bandLogE[21*c+i] = inlines.MAX16Int(bandLogE[21*c+i], bandLogE[21*c+i+1]-int(inlines.QCONST16(2.0, CeltConstants.DB_SHIFT)))
 		}
 		if pos[c] == 1 {
 			for i := 0; i < 21; i++ {
@@ -180,8 +182,8 @@ func surround_analysis(celt_mode *CeltMode, pcm []int16, pcm_ptr int, bandLogE [
 			}
 		} else if pos[c] == 2 {
 			for i := 0; i < 21; i++ {
-				maskLogE[0][i] = logSum(maskLogE[0][i], bandLogE[21*c+i]-int(QCONST16(0.5, CeltConstants.DB_SHIFT)))
-				maskLogE[2][i] = logSum(maskLogE[2][i], bandLogE[21*c+i]-int(QCONST16(0.5, CeltConstants.DB_SHIFT)))
+				maskLogE[0][i] = logSum(maskLogE[0][i], bandLogE[21*c+i]-int(inlines.QCONST16(0.5, CeltConstants.DB_SHIFT)))
+				maskLogE[2][i] = logSum(maskLogE[2][i], bandLogE[21*c+i]-int(inlines.QCONST16(0.5, CeltConstants.DB_SHIFT)))
 			}
 		}
 		copy(mem[c*overlap:(c*overlap)+overlap], input[frame_size:frame_size+overlap])
@@ -407,7 +409,7 @@ func (st *OpusMSEncoder) surround_rate_allocation(out_rates []int, frame_size in
 		} else {
 			out_rates[i] = lfe_offset + (channel_rate * lfe_ratio >> 8)
 		}
-		out_rates[i] = IMAX(out_rates[i], 500)
+		out_rates[i] = inlines.IMAX(out_rates[i], 500)
 		rate_sum += out_rates[i]
 	}
 	return rate_sum
@@ -458,9 +460,9 @@ func (st *OpusMSEncoder) opus_multistream_encode_native(pcm []int16, pcm_ptr, an
 
 	if vbr == 0 {
 		if st.bitrate_bps == OPUS_AUTO {
-			max_data_bytes = IMIN(max_data_bytes, 3*rate_sum/(3*8*Fs/frame_size))
+			max_data_bytes = inlines.IMIN(max_data_bytes, 3*rate_sum/(3*8*Fs/frame_size))
 		} else if st.bitrate_bps != OPUS_BITRATE_MAX {
-			max_data_bytes = IMIN(max_data_bytes, IMAX(smallest_packet, 3*st.bitrate_bps/(3*8*Fs/frame_size)))
+			max_data_bytes = inlines.IMIN(max_data_bytes, inlines.IMAX(smallest_packet, 3*st.bitrate_bps/(3*8*Fs/frame_size)))
 		}
 	}
 
@@ -530,8 +532,8 @@ func (st *OpusMSEncoder) opus_multistream_encode_native(pcm []int16, pcm_ptr, an
 		}
 
 		curr_max = max_data_bytes - tot_size
-		curr_max -= IMAX(0, 2*(st.layout.nb_streams-s-1)-1)
-		curr_max = IMIN(curr_max, MS_FRAME_TMP)
+		curr_max -= inlines.IMAX(0, 2*(st.layout.nb_streams-s-1)-1)
+		curr_max = inlines.IMIN(curr_max, MS_FRAME_TMP)
 		if s != st.layout.nb_streams-1 {
 			if curr_max > 253 {
 				curr_max -= 2
@@ -750,7 +752,7 @@ func (st *OpusMSEncoder) GetExpertFrameDuration() OpusFramesize {
 	return st.variable_duration
 }
 
-func (st *OpusMSEncoder) SetExpertFrameDuration(value OpusFramesize) {
+func (st *OpusMSEncoder) SetExpertFrameDuration(value int) {
 	st.variable_duration = value
 }
 

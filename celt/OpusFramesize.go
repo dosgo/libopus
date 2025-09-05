@@ -35,11 +35,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 package celt
 
-type OpusFramesize int
-
 const (
 	// Error state
-	OPUS_FRAMESIZE_UNKNOWN OpusFramesize = iota
+	OPUS_FRAMESIZE_UNKNOWN int = iota
 	// Select frame size from the argument (default)
 	OPUS_FRAMESIZE_ARG
 	// Use 2.5 ms frames
@@ -62,7 +60,7 @@ type opusFramesizeHelpers struct{}
 
 var OpusFramesizeHelpers = &opusFramesizeHelpers{}
 
-func (o *opusFramesizeHelpers) GetOrdinal(size OpusFramesize) int {
+func (o *opusFramesizeHelpers) GetOrdinal(size int) int {
 	switch size {
 	case OPUS_FRAMESIZE_ARG:
 		return 1

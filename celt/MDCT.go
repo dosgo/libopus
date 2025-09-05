@@ -1,11 +1,11 @@
 package celt
 
-func clt_mdct_forward(l *MDCTLookup, input []int, input_ptr int, output []int, output_ptr int, window []int, overlap int, shift int, stride int) {
+func Clt_mdct_forward(l *MDCTLookup, input []int, input_ptr int, output []int, output_ptr int, window []int, overlap int, shift int, stride int) {
 	var i int
 	var N, N2, N4 int
 	var f []int
 	var f2 []int
-	st := l.kfft[shift]
+	st := l.Kfft[shift]
 	var trig []int16
 	trig_ptr := 0
 	var scale int
@@ -118,7 +118,7 @@ func clt_mdct_backward(l *MDCTLookup, input []int, input_ptr int, output []int, 
 
 	xp2 = input_ptr + (stride * (N2 - 1))
 	yp = output_ptr + (overlap >> 1)
-	bitrev := l.kfft[shift].bitrev
+	bitrev := l.Kfft[shift].bitrev
 	bitrav_ptr := 0
 	for i = 0; i < N4; i++ {
 		rev := int(bitrev[bitrav_ptr])
@@ -130,7 +130,7 @@ func clt_mdct_backward(l *MDCTLookup, input []int, input_ptr int, output []int, 
 		xp2 -= 2 * stride
 	}
 
-	opus_fft_impl(l.kfft[shift], output, output_ptr+(overlap>>1))
+	opus_fft_impl(l.Kfft[shift], output, output_ptr+(overlap>>1))
 
 	yp0 = output_ptr + (overlap >> 1)
 	yp1 = output_ptr + (overlap >> 1) + N2 - 2

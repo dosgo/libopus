@@ -91,7 +91,7 @@ func (this *CeltDecoder) ResetState() {
 	}
 }
 
-func (this *CeltDecoder) celt_decoder_init(sampling_rate int, channels int) int {
+func (this *CeltDecoder) Celt_decoder_init(sampling_rate int, channels int) int {
 	ret := this.opus_custom_decoder_init(mode48000_960_120, channels)
 	if ret != OpusError.OPUS_OK {
 		return ret
@@ -194,7 +194,7 @@ func (this *CeltDecoder) celt_decode_lost(N int, LM int) {
 
 		etmp := make([]int, overlap)
 		exc := make([]int, CeltConstants.MAX_PERIOD)
-		window := mode.window
+		window := mode.Window
 		for c := 0; c < C; c++ {
 			buf := this.decode_mem[c]
 			for i := 0; i < CeltConstants.MAX_PERIOD; i++ {
@@ -286,7 +286,7 @@ func (this *CeltDecoder) celt_decode_lost(N int, LM int) {
 	this.loss_count++
 }
 
-func (ed *CeltDecoder) celt_decode_with_ec(data []byte, data_ptr int, length int, pcm []int16, pcm_ptr int, frame_size int, dec *EntropyCoder, accum int) int {
+func (ed *CeltDecoder) Celt_decode_with_ec(data []byte, data_ptr int, length int, pcm []int16, pcm_ptr int, frame_size int, dec *comm.EntropyCoder, accum int) int {
 	var c, i, N int
 	var spread_decision, bits int
 	var X [][]int
@@ -366,8 +366,8 @@ func (ed *CeltDecoder) celt_decode_with_ec(data []byte, data_ptr int, length int
 	}
 
 	if dec == nil {
-		dec = NewEntropyCoder()
-		dec.dec_init(data, data_ptr, length)
+		dec = comm.NewEntropyCoder()
+		dec.Dec_init(data, data_ptr, length)
 	}
 
 	if C == 1 {
@@ -377,42 +377,42 @@ func (ed *CeltDecoder) celt_decode_with_ec(data []byte, data_ptr int, length int
 	}
 
 	total_bits = length * 8
-	tell = dec.tell()
+	tell = dec.Tell()
 
 	if tell >= total_bits {
 		silence = 1
 	} else if tell == 1 {
-		silence = dec.dec_bit_logp(15)
+		silence = dec.Dec_bit_logp(15)
 	} else {
 		silence = 0
 	}
 
 	if silence != 0 {
 		tell = length * 8
-		dec.nbits_total += tell - dec.tell()
+		dec.Nbits_total += tell - dec.Tell()
 	}
 
 	postfilter_gain = 0
 	postfilter_pitch = 0
 	postfilter_tapset = 0
 	if start == 0 && tell+16 <= total_bits {
-		if dec.dec_bit_logp(1) != 0 {
+		if dec.Dec_bit_logp(1) != 0 {
 			//var qg int
 			var octave int
-			octave = int(dec.dec_uint(6))
-			postfilter_pitch = (16 << octave) + dec.dec_bits(4+octave) - 1
-			dec.dec_bits(3)
-			if dec.tell()+2 <= total_bits {
-				postfilter_tapset = dec.dec_icdf(tapset_icdf[:], 2)
+			octave = int(dec.Dec_uint(6))
+			postfilter_pitch = (16 << octave) + dec.Dec_bits(4+octave) - 1
+			dec.Dec_bits(3)
+			if dec.Tell()+2 <= total_bits {
+				postfilter_tapset = dec.Dec_icdf(tapset_icdf[:], 2)
 			}
 			postfilter_gain = int(math.Trunc(0.5 + (0.09375)*(1<<15)))
 		}
-		tell = dec.tell()
+		tell = dec.Tell()
 	}
 
 	if LM > 0 && tell+3 <= total_bits {
-		isTransient = dec.dec_bit_logp(3)
-		tell = dec.tell()
+		isTransient = dec.Dec_bit_logp(3)
+		tell = dec.Tell()
 	} else {
 		isTransient = 0
 	}
@@ -425,7 +425,7 @@ func (ed *CeltDecoder) celt_decode_with_ec(data []byte, data_ptr int, length int
 
 	intra_ener = 0
 	if tell+3 <= total_bits {
-		intra_ener = dec.dec_bit_logp(3)
+		intra_ener = dec.Dec_bit_logp(3)
 	}
 
 	unquant_coarse_energy(mode, start, end, oldBandE, intra_ener, dec, C, LM)
@@ -433,10 +433,10 @@ func (ed *CeltDecoder) celt_decode_with_ec(data []byte, data_ptr int, length int
 	tf_res = make([]int, nbEBands)
 	tf_decode(start, end, isTransient, tf_res, LM, dec)
 
-	tell = dec.tell()
+	tell = dec.Tell()
 	spread_decision = Spread.SPREAD_NORMAL
 	if tell+4 <= total_bits {
-		spread_decision = dec.dec_icdf(spread_icdf[:], 5)
+		spread_decision = dec.Dec_icdf(spread_icdf[:], 5)
 	}
 
 	cap = make([]int, nbEBands)
@@ -445,7 +445,7 @@ func (ed *CeltDecoder) celt_decode_with_ec(data []byte, data_ptr int, length int
 	offsets = make([]int, nbEBands)
 	dynalloc_logp = 6
 	total_bits <<= BITRES
-	tell = dec.tell_frac()
+	tell = dec.Tell_frac()
 	for i = start; i < end; i++ {
 		var width, quanta int
 		dynalloc_loop_logp := dynalloc_logp
@@ -453,8 +453,8 @@ func (ed *CeltDecoder) celt_decode_with_ec(data []byte, data_ptr int, length int
 		width = C * (int(eBands[i+1]) - int(eBands[i])) << LM
 		quanta = inlines.IMIN(width<<BITRES, inlines.IMAX(6<<BITRES, width))
 		for tell+(dynalloc_loop_logp<<BITRES) < total_bits && boost < cap[i] {
-			flag := dec.dec_bit_logp(int64(dynalloc_loop_logp))
-			tell = dec.tell_frac()
+			flag := dec.Dec_bit_logp(int64(dynalloc_loop_logp))
+			tell = dec.Tell_frac()
 			if flag == 0 {
 				break
 			}
@@ -471,10 +471,10 @@ func (ed *CeltDecoder) celt_decode_with_ec(data []byte, data_ptr int, length int
 	fine_quant = make([]int, nbEBands)
 	alloc_trim = 5
 	if tell+(6<<BITRES) <= total_bits {
-		alloc_trim = dec.dec_icdf(trim_icdf[:], 7)
+		alloc_trim = dec.Dec_icdf(trim_icdf[:], 7)
 	}
 
-	bits = (length*8)<<BITRES - dec.tell_frac() - 1
+	bits = (length*8)<<BITRES - dec.Tell_frac() - 1
 	if isTransient != 0 && LM >= 2 && bits >= ((LM+2)<<BITRES) {
 		anti_collapse_rsv = 1 << BITRES
 	} else {
@@ -518,10 +518,10 @@ func (ed *CeltDecoder) celt_decode_with_ec(data []byte, data_ptr int, length int
 	ed.rng = boxed_rng.Val
 
 	if anti_collapse_rsv > 0 {
-		anti_collapse_on = dec.dec_bits(1)
+		anti_collapse_on = dec.Dec_bits(1)
 	}
 
-	unquant_energy_finalise(mode, start, end, oldBandE, fine_quant, fine_priority, length*8-dec.tell(), dec, C)
+	unquant_energy_finalise(mode, start, end, oldBandE, fine_quant, fine_priority, length*8-dec.Tell(), dec, C)
 
 	if anti_collapse_on != 0 {
 		anti_collapse(mode, X, collapse_masks, LM, C, N, start, end, oldBandE, oldLogE, oldLogE2, pulses, ed.rng)
@@ -540,9 +540,9 @@ func (ed *CeltDecoder) celt_decode_with_ec(data []byte, data_ptr int, length int
 	for {
 		ed.postfilter_period = inlines.IMAX(ed.postfilter_period, CeltConstants.COMBFILTER_MINPERIOD)
 		ed.postfilter_period_old = inlines.IMAX(ed.postfilter_period_old, CeltConstants.COMBFILTER_MINPERIOD)
-		comb_filter(out_syn[c], out_syn_ptrs[c], out_syn[c], out_syn_ptrs[c], ed.postfilter_period_old, ed.postfilter_period, mode.shortMdctSize, ed.postfilter_gain_old, ed.postfilter_gain, ed.postfilter_tapset_old, ed.postfilter_tapset, mode.window, overlap)
+		comb_filter(out_syn[c], out_syn_ptrs[c], out_syn[c], out_syn_ptrs[c], ed.postfilter_period_old, ed.postfilter_period, mode.shortMdctSize, ed.postfilter_gain_old, ed.postfilter_gain, ed.postfilter_tapset_old, ed.postfilter_tapset, mode.Window, overlap)
 		if LM != 0 {
-			comb_filter(out_syn[c], out_syn_ptrs[c]+mode.shortMdctSize, out_syn[c], out_syn_ptrs[c]+mode.shortMdctSize, ed.postfilter_period, postfilter_pitch, N-mode.shortMdctSize, ed.postfilter_gain, postfilter_gain, ed.postfilter_tapset, postfilter_tapset, mode.window, overlap)
+			comb_filter(out_syn[c], out_syn_ptrs[c]+mode.shortMdctSize, out_syn[c], out_syn_ptrs[c]+mode.shortMdctSize, ed.postfilter_period, postfilter_pitch, N-mode.shortMdctSize, ed.postfilter_gain, postfilter_gain, ed.postfilter_tapset, postfilter_tapset, mode.Window, overlap)
 		}
 		c++
 		if !(c < CC) {
@@ -599,15 +599,15 @@ func (ed *CeltDecoder) celt_decode_with_ec(data []byte, data_ptr int, length int
 			break
 		}
 	}
-	ed.rng = int(dec.rng)
+	ed.rng = int(dec.Rng)
 
 	deemphasis(out_syn, out_syn_ptrs, pcm, pcm_ptr, N, CC, ed.downsample, mode.preemph, ed.preemph_memD, accum)
 	ed.loss_count = 0
 
-	if dec.tell() > 8*length {
+	if dec.Tell() > 8*length {
 		return OpusError.OPUS_INTERNAL_ERROR
 	}
-	if dec.get_error() != 0 {
+	if dec.Get_error() != 0 {
 		ed.error = 1
 	}
 	return frame_size / ed.downsample

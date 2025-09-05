@@ -7,10 +7,13 @@ import (
 	"math"
 	"strconv"
 	"strings"
+
+	"github.com/dosgo/libopus/celt"
+	"github.com/dosgo/libopus/silk"
 )
 
 type OpusEncoder struct {
-	silk_mode               EncControlState
+	silk_mode               silk.EncControlState
 	application             OpusApplication
 	channels                int
 	delay_compensation      int
@@ -111,7 +114,7 @@ func (st *OpusEncoder) ResetState() {
 	st.first = 1
 	st.mode = MODE_HYBRID
 	st.bandwidth = OPUS_BANDWIDTH_FULLBAND
-	st.variable_HP_smth2_Q15 = silk_LSHIFT(silk_lin2log(TuningParameters.VARIABLE_HP_MIN_CUTOFF_HZ), 8)
+	st.variable_HP_smth2_Q15 = inlines.Silk_LSHIFT(silk_lin2log(TuningParameters.VARIABLE_HP_MIN_CUTOFF_HZ), 8)
 }
 
 func NewOpusEncoder(Fs, channels int, application OpusApplication) (*OpusEncoder, error) {
@@ -123,11 +126,11 @@ func NewOpusEncoder(Fs, channels int, application OpusApplication) (*OpusEncoder
 	}
 	st := &OpusEncoder{}
 
-	st.SilkEncoder = NewSilkEncoder()
+	st.SilkEncoder = silk.NewSilkEncoder()
 
-	st.Celt_Encoder = CeltEncoder{}
-	st.analysis = NewTonalityAnalysisState()
-	st.silk_mode = EncControlState{}
+	st.Celt_Encoder = celt.CeltEncoder{}
+	st.analysis = celt.NewTonalityAnalysisState()
+	st.silk_mode = silk.EncControlState{}
 	ret := st.opus_init_encoder(Fs, channels, application)
 	if ret != OpusError.OPUS_OK {
 		if ret == OpusError.OPUS_BAD_ARG {
@@ -189,11 +192,11 @@ func (st *OpusEncoder) opus_init_encoder(Fs, channels int, application OpusAppli
 	st.delay_compensation = Fs / 250
 	st.hybrid_stereo_width_Q14 = 1 << 14
 	st.prev_HB_gain = CeltConstants.Q15ONE
-	st.variable_HP_smth2_Q15 = silk_LSHIFT(silk_lin2log(TuningParameters.VARIABLE_HP_MIN_CUTOFF_HZ), 8)
+	st.variable_HP_smth2_Q15 = inlines.Silk_LSHIFT(silk_lin2log(TuningParameters.VARIABLE_HP_MIN_CUTOFF_HZ), 8)
 	st.first = 1
 	st.mode = MODE_HYBRID
 	st.bandwidth = OPUS_BANDWIDTH_FULLBAND
-	tonality_analysis_init(&st.analysis)
+	celt.Tonality_analysis_init(&st.analysis)
 	return OpusError.OPUS_OK
 }
 
@@ -252,7 +255,7 @@ func (st *OpusEncoder) opus_encode_native(pcm []int16, pcm_ptr, frame_size int, 
 	var analysis_read_pos_bak int = -1
 	var analysis_read_subframe_bak int = -1
 
-	max_data_bytes = IMIN(1276, out_data_bytes)
+	max_data_bytes = inlines.IMIN(1276, out_data_bytes)
 
 	st.rangeFinal = 0
 	if (st.variable_duration == OPUS_FRAMESIZE_UNKNOWN && 400*frame_size != st.Fs && 200*frame_size != st.Fs && 100*frame_size != st.Fs &&
@@ -268,7 +271,7 @@ func (st *OpusEncoder) opus_encode_native(pcm []int16, pcm_ptr, frame_size int, 
 		delay_compensation = st.delay_compensation
 	}
 
-	lsb_depth = IMIN(lsb_depth, st.lsb_depth)
+	lsb_depth = inlines.IMIN(lsb_depth, st.lsb_depth)
 	celt_mode = celt_enc.GetMode()
 	st.voice_ratio = -1
 
@@ -327,7 +330,7 @@ func (st *OpusEncoder) opus_encode_native(pcm []int16, pcm_ptr, frame_size int, 
 		/* Multiply by 3 to make sure the division is exact. */
 		frame_rate3 := 3 * st.Fs / frame_size
 		/* We need to make sure that "int" values always fit in 16 bits. */
-		cbrBytes = IMIN((3*st.bitrate_bps/8+frame_rate3/2)/frame_rate3, max_data_bytes)
+		cbrBytes = inlines.IMIN((3*st.bitrate_bps/8+frame_rate3/2)/frame_rate3, max_data_bytes)
 		st.bitrate_bps = cbrBytes * frame_rate3 * 8 / 3
 		max_data_bytes = cbrBytes
 	}
@@ -379,7 +382,7 @@ func (st *OpusEncoder) opus_encode_native(pcm []int16, pcm_ptr, frame_size int, 
 		voice_est = st.voice_ratio * 327 >> 8
 		/* For AUDIO, never be more than 90% confident of having speech */
 		if st.application == OPUS_APPLICATION_AUDIO {
-			voice_est = IMIN(voice_est, 115)
+			voice_est = inlines.IMIN(voice_est, 115)
 		}
 	} else if st.application == OPUS_APPLICATION_VOIP {
 		voice_est = 115
@@ -499,10 +502,10 @@ func (st *OpusEncoder) opus_encode_native(pcm []int16, pcm_ptr, frame_size int, 
 
 	if redundancy != 0 {
 		/* Fair share of the max size allowed */
-		redundancy_bytes = IMIN(257, max_data_bytes*(st.Fs/200)/(frame_size+st.Fs/200))
+		redundancy_bytes = inlines.IMIN(257, max_data_bytes*(st.Fs/200)/(frame_size+st.Fs/200))
 		/* For VBR, target the actual bitrate (subject to the limit above) */
 		if st.use_vbr != 0 {
-			redundancy_bytes = IMIN(redundancy_bytes, st.bitrate_bps/1600)
+			redundancy_bytes = inlines.IMIN(redundancy_bytes, st.bitrate_bps/1600)
 		}
 	}
 
@@ -656,7 +659,7 @@ func (st *OpusEncoder) opus_encode_native(pcm []int16, pcm_ptr, frame_size int, 
 			nb_frames = 3
 		}
 
-		bytes_per_frame = IMIN(1276, (out_data_bytes-3)/nb_frames)
+		bytes_per_frame = inlines.IMIN(1276, (out_data_bytes-3)/nb_frames)
 
 		tmp_data = make([]byte, nb_frames*bytes_per_frame)
 
@@ -702,7 +705,7 @@ func (st *OpusEncoder) opus_encode_native(pcm []int16, pcm_ptr, frame_size int, 
 		if st.use_vbr != 0 {
 			repacketize_len = out_data_bytes
 		} else {
-			repacketize_len = IMIN(3*st.bitrate_bps/(3*8*50/nb_frames), out_data_bytes)
+			repacketize_len = inlines.IMIN(3*st.bitrate_bps/(3*8*50/nb_frames), out_data_bytes)
 		}
 		if Debug {
 			dataStr, _ := json.Marshal(ConvertByteToInt8(data))
@@ -735,7 +738,7 @@ func (st *OpusEncoder) opus_encode_native(pcm []int16, pcm_ptr, frame_size int, 
 	}
 
 	/* printf("%d %d %d %d\n", st.bitrate_bps, st.stream_channels, st.mode, curr_bandwidth); */
-	bytes_target = IMIN(max_data_bytes-redundancy_bytes, st.bitrate_bps*frame_size/(st.Fs*8)) - 1
+	bytes_target = inlines.IMIN(max_data_bytes-redundancy_bytes, st.bitrate_bps*frame_size/(st.Fs*8)) - 1
 
 	data_ptr += 1
 
@@ -747,7 +750,7 @@ func (st *OpusEncoder) opus_encode_native(pcm []int16, pcm_ptr, frame_size int, 
 	copy(pcm_buf[:total_buffer*st.channels], st.delay_buffer[(st.encoder_buffer-total_buffer)*st.channels:(st.encoder_buffer-total_buffer)*st.channels+total_buffer*st.channels])
 
 	if st.mode == MODE_CELT_ONLY {
-		hp_freq_smth1 = silk_LSHIFT(silk_lin2log(TuningParameters.VARIABLE_HP_MIN_CUTOFF_HZ), 8)
+		hp_freq_smth1 = inlines.Silk_LSHIFT(silk_lin2log(TuningParameters.VARIABLE_HP_MIN_CUTOFF_HZ), 8)
 	} else {
 		hp_freq_smth1 = silk_enc.state_Fxx[0].variable_HP_smth1_Q15
 	}
@@ -880,11 +883,11 @@ func (st *OpusEncoder) opus_encode_native(pcm []int16, pcm_ptr, frame_size int, 
 			}
 			if effective_max_rate < 13000 {
 				st.silk_mode.maxInternalSampleRate = 12000
-				st.silk_mode.desiredInternalSampleRate = IMIN(12000, st.silk_mode.desiredInternalSampleRate)
+				st.silk_mode.desiredInternalSampleRate = inlines.IMIN(12000, st.silk_mode.desiredInternalSampleRate)
 			}
 			if effective_max_rate < 9600 {
 				st.silk_mode.maxInternalSampleRate = 8000
-				st.silk_mode.desiredInternalSampleRate = IMIN(8000, st.silk_mode.desiredInternalSampleRate)
+				st.silk_mode.desiredInternalSampleRate = inlines.IMIN(8000, st.silk_mode.desiredInternalSampleRate)
 			}
 		} else {
 			st.silk_mode.maxInternalSampleRate = 16000
@@ -893,7 +896,7 @@ func (st *OpusEncoder) opus_encode_native(pcm []int16, pcm_ptr, frame_size int, 
 		st.silk_mode.useCBR = boolToInt(st.use_vbr == 0)
 
 		/* Call SILK encoder for the low band */
-		nBytes = IMIN(1275, max_data_bytes-1-redundancy_bytes)
+		nBytes = inlines.IMIN(1275, max_data_bytes-1-redundancy_bytes)
 
 		st.silk_mode.maxBits = nBytes * 8
 		/* Only allow up to 90% of the bits for hybrid mode*/
@@ -1065,7 +1068,7 @@ func (st *OpusEncoder) opus_encode_native(pcm []int16, pcm_ptr, frame_size int, 
 
 	st.prev_HB_gain = HB_gain
 	if st.mode != MODE_HYBRID || st.stream_channels == 1 {
-		st.silk_mode.stereoWidth_Q14 = IMIN((1 << 14), 2*IMAX(0, equiv_rate-30000))
+		st.silk_mode.stereoWidth_Q14 = inlines.IMIN((1 << 14), 2*IMAX(0, equiv_rate-30000))
 	}
 	if st.energy_masking == nil && st.channels == 2 {
 		/* Apply stereo width reduction (at low bitrates) */
@@ -1105,8 +1108,8 @@ func (st *OpusEncoder) opus_encode_native(pcm []int16, pcm_ptr, frame_size int, 
 			}
 			/* Target the same bit-rate for redundancy as for the rest,
 			   up to a max of 257 bytes */
-			redundancy_bytes = IMIN(max_redundancy, st.bitrate_bps/1600)
-			redundancy_bytes = IMIN(257, IMAX(2, redundancy_bytes))
+			redundancy_bytes = inlines.IMIN(max_redundancy, st.bitrate_bps/1600)
+			redundancy_bytes = inlines.IMIN(257, IMAX(2, redundancy_bytes))
 			if st.mode == MODE_HYBRID {
 				enc.enc_uint(int64(redundancy_bytes-2), 256)
 			}
@@ -1128,7 +1131,7 @@ func (st *OpusEncoder) opus_encode_native(pcm []int16, pcm_ptr, frame_size int, 
 		enc.enc_done()
 		nb_compr_bytes = ret
 	} else {
-		nb_compr_bytes = IMIN((max_data_bytes-1)-redundancy_bytes, nb_compr_bytes)
+		nb_compr_bytes = inlines.IMIN((max_data_bytes-1)-redundancy_bytes, nb_compr_bytes)
 		enc.enc_shrink(nb_compr_bytes)
 	}
 
@@ -1524,13 +1527,6 @@ func btol(b bool) int {
 		return 1
 	}
 	return 0
-}
-
-func imin(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 func imax(a, b int) int {

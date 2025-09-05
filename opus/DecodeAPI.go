@@ -1,10 +1,15 @@
 package opus
 
-func silk_InitDecoder(decState *SilkDecoder) int {
+import (
+	"github.com/dosgo/libopus/comm"
+	"github.com/dosgo/libopus/silk"
+)
+
+func silk_InitDecoder(decState *silk.SilkDecoder) int {
 	decState.Reset()
 	ret := SilkError.SILK_NO_ERROR
 	channel_states := decState.channel_state
-	for n := 0; n < DECODER_NUM_CHANNELS; n++ {
+	for n := 0; n < SilkConstants.DECODER_NUM_CHANNELS; n++ {
 		ret = channel_states[n].silk_init_decoder()
 	}
 	decState.sStereo.Reset()
@@ -13,11 +18,11 @@ func silk_InitDecoder(decState *SilkDecoder) int {
 }
 
 func silk_Decode(
-	psDec *SilkDecoder,
+	psDec *silk.SilkDecoder,
 	decControl *DecControlState,
 	lostFlag int,
 	newPacketFlag int,
-	psRangeDec *EntropyCoder,
+	psRangeDec *comm.EntropyCoder,
 	samplesOut []int16,
 	samplesOut_ptr int,
 	nSamplesOut *BoxedValueInt,
@@ -301,7 +306,7 @@ func silk_Decode(
 		if stereo_to_mono != 0 {
 			/* Resample right channel for newly collapsed stereo just in case
 			   we weren't doing collapsing when switching to mono */
-			ret += silk_resampler(channel_state[1].resampler_state, resample_out, resample_out_ptr, samplesOut_tmp, samplesOut_tmp_ptrs[0]+1, nSamplesOutDec.Val)
+			ret += silk, Silk_resampler(channel_state[1].resampler_state, resample_out, resample_out_ptr, samplesOut_tmp, samplesOut_tmp_ptrs[0]+1, nSamplesOutDec.Val)
 
 			for i = 0; i < nSamplesOut.Val; i++ {
 				samplesOut[samplesOut_ptr+1+2*i] = resample_out[resample_out_ptr+i]

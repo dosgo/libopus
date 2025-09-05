@@ -72,7 +72,7 @@ func bitexact_log2tan(isin int, icos int) int {
 		inlines.FRAC_MUL16(icos, inlines.FRAC_MUL16(icos, -2597)+7932)
 }
 
-func compute_band_energies(m *CeltMode, X [][]int, bandE [][]int, end int, C int, LM int) {
+func Compute_band_energies(m *CeltMode, X [][]int, bandE [][]int, end int, C int, LM int) {
 	eBands := m.eBands
 	//N := m.shortMdctSize << LM
 	for c := 0; c < C; c++ {
