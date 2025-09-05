@@ -234,12 +234,12 @@ func compute_mdcts(mode *CeltMode, shortBlocks int, input [][]int, output [][]in
 	shift := 0
 	if shortBlocks != 0 {
 		B = shortBlocks
-		N = mode.shortMdctSize
-		shift = mode.maxLM
+		N = mode.ShortMdctSize
+		shift = mode.MaxLM
 	} else {
 		B = 1
-		N = mode.shortMdctSize << LM
-		shift = mode.maxLM - LM
+		N = mode.ShortMdctSize << LM
+		shift = mode.MaxLM - LM
 	}
 
 	for c := 0; c < CC; c++ {
@@ -1046,7 +1046,7 @@ func celt_synthesis(mode *CeltMode, X [][]int, out_syn [][]int, out_syn_ptrs []i
 
 	overlap = mode.overlap
 	nbEBands = mode.nbEBands
-	N = mode.shortMdctSize << LM
+	N = mode.ShortMdctSize << LM
 
 	freq = make([]int, N)
 	/**
@@ -1056,12 +1056,12 @@ func celt_synthesis(mode *CeltMode, X [][]int, out_syn [][]int, out_syn_ptrs []i
 
 	if isTransient != 0 {
 		B = M
-		NB = mode.shortMdctSize
-		shift = mode.maxLM
+		NB = mode.ShortMdctSize
+		shift = mode.MaxLM
 	} else {
 		B = 1
-		NB = mode.shortMdctSize << LM
-		shift = mode.maxLM - LM
+		NB = mode.ShortMdctSize << LM
+		shift = mode.MaxLM - LM
 	}
 
 	if CC == 2 && C == 1 {

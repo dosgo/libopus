@@ -3,6 +3,7 @@ package opus
 import (
 	"math"
 
+	"github.com/dosgo/libopus/celt"
 	"github.com/dosgo/libopus/silk"
 )
 
@@ -274,13 +275,13 @@ func frame_size_select(frame_size int, variable_duration OpusFramesize, Fs int) 
 	if frame_size < Fs/400 {
 		return -1
 	}
-	if variable_duration == OPUS_FRAMESIZE_ARG {
+	if variable_duration == celt.OPUS_FRAMESIZE_ARG {
 		new_size = frame_size
-	} else if variable_duration == OPUS_FRAMESIZE_VARIABLE {
+	} else if variable_duration == celt.OPUS_FRAMESIZE_VARIABLE {
 		new_size = Fs / 50
-	} else if OpusFramesizeHelpers.GetOrdinal(variable_duration) >= OpusFramesizeHelpers.GetOrdinal(OPUS_FRAMESIZE_2_5_MS) &&
-		OpusFramesizeHelpers.GetOrdinal(variable_duration) <= OpusFramesizeHelpers.GetOrdinal(OPUS_FRAMESIZE_60_MS) {
-		new_size = inlines.IMIN(3*Fs/50, (Fs/400)<<(OpusFramesizeHelpers.GetOrdinal(variable_duration)-OpusFramesizeHelpers.GetOrdinal(OPUS_FRAMESIZE_2_5_MS)))
+	} else if OpusFramesizeHelpers.GetOrdinal(variable_duration) >= OpusFramesizeHelpers.GetOrdinal(celt.OPUS_FRAMESIZE_2_5_MS) &&
+		OpusFramesizeHelpers.GetOrdinal(variable_duration) <= OpusFramesizeHelpers.GetOrdinal(celt.OPUS_FRAMESIZE_60_MS) {
+		new_size = inlines.IMIN(3*Fs/50, (Fs/400)<<(OpusFramesizeHelpers.GetOrdinal(variable_duration)-OpusFramesizeHelpers.GetOrdinal(celt.OPUS_FRAMESIZE_2_5_MS)))
 	} else {
 		return -1
 	}
@@ -295,7 +296,7 @@ func frame_size_select(frame_size int, variable_duration OpusFramesize, Fs int) 
 }
 
 func compute_frame_size(analysis_pcm []int16, analysis_pcm_ptr int, frame_size int, variable_duration OpusFramesize, C int, Fs int, bitrate_bps int, delay_compensation int, subframe_mem []float32, analysis_enabled bool) int {
-	if analysis_enabled && variable_duration == OPUS_FRAMESIZE_VARIABLE && frame_size >= Fs/200 {
+	if analysis_enabled && variable_duration == celt.OPUS_FRAMESIZE_VARIABLE && frame_size >= Fs/200 {
 		LM := 3
 		LM = optimize_framesize(analysis_pcm, analysis_pcm_ptr, frame_size, C, Fs, bitrate_bps, 0, subframe_mem, delay_compensation)
 		for (Fs/400)<<LM > frame_size {

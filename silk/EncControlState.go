@@ -11,9 +11,9 @@ type EncControlState struct {
 	BitRate                   int
 	packetLossPercentage      int
 	complexity                int
-	useInBandFEC              int
-	useDTX                    int
-	useCBR                    int
+	UseInBandFEC              int
+	UseDTX                    int
+	UseCBR                    int
 	maxBits                   int
 	toMono                    int
 	opusCanSwitch             int
@@ -36,9 +36,9 @@ func (s *EncControlState) Reset() {
 	s.BitRate = 0
 	s.packetLossPercentage = 0
 	s.complexity = 0
-	s.useInBandFEC = 0
-	s.useDTX = 0
-	s.useCBR = 0
+	s.UseInBandFEC = 0
+	s.UseDTX = 0
+	s.UseCBR = 0
 	s.maxBits = 0
 	s.toMono = 0
 	s.opusCanSwitch = 0
@@ -84,15 +84,15 @@ func (s *EncControlState) check_control_input() int {
 		inlines.OpusAssert(false)
 		return SilkError.SILK_ENC_INVALID_LOSS_RATE
 	}
-	if s.useDTX < 0 || s.useDTX > 1 {
+	if s.UseDTX < 0 || s.UseDTX > 1 {
 		inlines.OpusAssert(false)
 		return SilkError.SILK_ENC_INVALID_DTX_SETTING
 	}
-	if s.useCBR < 0 || s.useCBR > 1 {
+	if s.UseCBR < 0 || s.UseCBR > 1 {
 		inlines.OpusAssert(false)
 		return SilkError.SILK_ENC_INVALID_CBR_SETTING
 	}
-	if s.useInBandFEC < 0 || s.useInBandFEC > 1 {
+	if s.UseInBandFEC < 0 || s.UseInBandFEC > 1 {
 		inlines.OpusAssert(false)
 		return SilkError.SILK_ENC_INVALID_INBAND_FEC_SETTING
 	}

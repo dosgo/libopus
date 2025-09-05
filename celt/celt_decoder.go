@@ -328,12 +328,12 @@ func (ed *CeltDecoder) Celt_decode_with_ec(data []byte, data_ptr int, length int
 	backgroundLogE = ed.backgroundLogE
 
 	{
-		for LM = 0; LM <= mode.maxLM; LM++ {
-			if mode.shortMdctSize<<LM == frame_size {
+		for LM = 0; LM <= mode.MaxLM; LM++ {
+			if mode.ShortMdctSize<<LM == frame_size {
 				break
 			}
 		}
-		if LM > mode.maxLM {
+		if LM > mode.MaxLM {
 			return OpusError.OPUS_BAD_ARG
 		}
 	}
@@ -343,7 +343,7 @@ func (ed *CeltDecoder) Celt_decode_with_ec(data []byte, data_ptr int, length int
 		return OpusError.OPUS_BAD_ARG
 	}
 
-	N = M * mode.shortMdctSize
+	N = M * mode.ShortMdctSize
 	c = 0
 	for {
 		out_syn[c] = ed.decode_mem[c]
@@ -540,9 +540,9 @@ func (ed *CeltDecoder) Celt_decode_with_ec(data []byte, data_ptr int, length int
 	for {
 		ed.postfilter_period = inlines.IMAX(ed.postfilter_period, CeltConstants.COMBFILTER_MINPERIOD)
 		ed.postfilter_period_old = inlines.IMAX(ed.postfilter_period_old, CeltConstants.COMBFILTER_MINPERIOD)
-		comb_filter(out_syn[c], out_syn_ptrs[c], out_syn[c], out_syn_ptrs[c], ed.postfilter_period_old, ed.postfilter_period, mode.shortMdctSize, ed.postfilter_gain_old, ed.postfilter_gain, ed.postfilter_tapset_old, ed.postfilter_tapset, mode.Window, overlap)
+		comb_filter(out_syn[c], out_syn_ptrs[c], out_syn[c], out_syn_ptrs[c], ed.postfilter_period_old, ed.postfilter_period, mode.ShortMdctSize, ed.postfilter_gain_old, ed.postfilter_gain, ed.postfilter_tapset_old, ed.postfilter_tapset, mode.Window, overlap)
 		if LM != 0 {
-			comb_filter(out_syn[c], out_syn_ptrs[c]+mode.shortMdctSize, out_syn[c], out_syn_ptrs[c]+mode.shortMdctSize, ed.postfilter_period, postfilter_pitch, N-mode.shortMdctSize, ed.postfilter_gain, postfilter_gain, ed.postfilter_tapset, postfilter_tapset, mode.Window, overlap)
+			comb_filter(out_syn[c], out_syn_ptrs[c]+mode.ShortMdctSize, out_syn[c], out_syn_ptrs[c]+mode.ShortMdctSize, ed.postfilter_period, postfilter_pitch, N-mode.ShortMdctSize, ed.postfilter_gain, postfilter_gain, ed.postfilter_tapset, postfilter_tapset, mode.Window, overlap)
 		}
 		c++
 		if !(c < CC) {

@@ -3,7 +3,7 @@ package celt
 import "github.com/dosgo/libopus/opusConstants"
 
 type TonalityAnalysisState struct {
-	enabled                 bool
+	Enabled                 bool
 	angle                   [240]float32
 	d_angle                 [240]float32
 	d2_angle                [240]float32

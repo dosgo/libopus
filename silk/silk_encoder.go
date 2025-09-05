@@ -1,7 +1,7 @@
 package silk
 
 type SilkEncoder struct {
-	state_Fxx                 []*SilkChannelEncoder
+	State_Fxx                 []*SilkChannelEncoder
 	sStereo                   *StereoEncodeState
 	nBitsUsedLBRR             int
 	nBitsExceeded             int
@@ -16,16 +16,16 @@ type SilkEncoder struct {
 func NewSilkEncoder() SilkEncoder {
 	enc := SilkEncoder{}
 	enc.sStereo = NewStereoEncodeState()
-	enc.state_Fxx = make([]*SilkChannelEncoder, ENCODER_NUM_CHANNELS)
+	enc.State_Fxx = make([]*SilkChannelEncoder, ENCODER_NUM_CHANNELS)
 	for i := 0; i < ENCODER_NUM_CHANNELS; i++ {
-		enc.state_Fxx[i] = NewSilkChannelEncoder()
+		enc.State_Fxx[i] = NewSilkChannelEncoder()
 	}
 	return enc
 }
 
 func (enc *SilkEncoder) Reset() {
 	for c := 0; c < ENCODER_NUM_CHANNELS; c++ {
-		enc.state_Fxx[c].Reset()
+		enc.State_Fxx[c].Reset()
 	}
 	enc.sStereo.Reset()
 	enc.nBitsUsedLBRR = 0

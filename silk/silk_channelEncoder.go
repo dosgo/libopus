@@ -231,13 +231,13 @@ func (s *SilkChannelEncoder) silk_control_encoder(encControl *EncControlState, T
 	var fs_kHz int
 	ret := SilkError.SILK_NO_ERROR
 
-	s.useDTX = encControl.useDTX
-	s.useCBR = encControl.useCBR
+	s.useDTX = encControl.UseDTX
+	s.useCBR = encControl.UseCBR
 	s.API_fs_Hz = encControl.API_sampleRate
 	s.maxInternal_fs_Hz = encControl.maxInternalSampleRate
 	s.minInternal_fs_Hz = encControl.minInternalSampleRate
 	s.desiredInternal_fs_Hz = encControl.desiredInternalSampleRate
-	s.useInBandFEC = encControl.useInBandFEC
+	s.useInBandFEC = encControl.UseInBandFEC
 	s.nChannelsAPI = encControl.nChannelsAPI
 	s.nChannelsInternal = encControl.nChannelsInternal
 	s.allow_bandwidth_switch = allow_bw_switch

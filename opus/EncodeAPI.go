@@ -68,11 +68,11 @@ func silk_Encode(
 	nBytesOut.Val = 0
 
 	if encControl.reducedDependency != 0 {
-		psEnc.state_Fxx[0].first_frame_after_reset = 1
-		psEnc.state_Fxx[1].first_frame_after_reset = 1
+		psEnc.State_Fxx[0].first_frame_after_reset = 1
+		psEnc.State_Fxx[1].first_frame_after_reset = 1
 	}
-	psEnc.state_Fxx[0].nFramesEncoded = 0
-	psEnc.state_Fxx[1].nFramesEncoded = 0
+	psEnc.State_Fxx[0].nFramesEncoded = 0
+	psEnc.State_Fxx[1].nFramesEncoded = 0
 
 	ret += encControl.check_control_input()
 	if ret != SilkError.SILK_NO_ERROR {
@@ -97,13 +97,13 @@ func silk_Encode(
 		psEnc.sStereo.width_prev_Q14 = 0
 		psEnc.sStereo.smth_width_Q14 = int16(SILK_CONST(1.0, 14))
 		if psEnc.nChannelsAPI == 2 {
-			psEnc.state_Fxx[1].resampler_state = psEnc.state_Fxx[0].resampler_state
-			copy(psEnc.state_Fxx[1].In_HP_State[:], psEnc.state_Fxx[0].In_HP_State[:])
+			psEnc.State_Fxx[1].resampler_state = psEnc.State_Fxx[0].resampler_state
+			copy(psEnc.State_Fxx[1].In_HP_State[:], psEnc.State_Fxx[0].In_HP_State[:])
 		}
 	}
 
 	transition = 0
-	if encControl.payloadSize_ms != psEnc.state_Fxx[0].PacketSize_ms || psEnc.nChannelsInternal != encControl.nChannelsInternal {
+	if encControl.payloadSize_ms != psEnc.State_Fxx[0].PacketSize_ms || psEnc.nChannelsInternal != encControl.nChannelsInternal {
 		transition = 1
 	}
 
@@ -127,8 +127,8 @@ func silk_Encode(
 		tmp_complexity = encControl.complexity
 		encControl.complexity = 0
 		for n := 0; n < encControl.nChannelsInternal; n++ {
-			psEnc.state_Fxx[n].controlled_since_last_payload = 0
-			psEnc.state_Fxx[n].prefillFlag = 1
+			psEnc.State_Fxx[n].controlled_since_last_payload = 0
+			psEnc.State_Fxx[n].prefillFlag = 1
 		}
 	} else {
 		if nBlocksOf10ms*encControl.API_sampleRate != 100*nSamplesIn || nSamplesIn < 0 {
@@ -146,46 +146,46 @@ func silk_Encode(
 	for n := 0; n < encControl.nChannelsInternal; n++ {
 		force_fs_kHz := 0
 		if n == 1 {
-			force_fs_kHz = psEnc.state_Fxx[0].fs_kHz
+			force_fs_kHz = psEnc.State_Fxx[0].fs_kHz
 		}
-		ret += psEnc.state_Fxx[n].silk_control_encoder(encControl, TargetRate_bps, psEnc.allowBandwidthSwitch, n, force_fs_kHz)
+		ret += psEnc.State_Fxx[n].silk_control_encoder(encControl, TargetRate_bps, psEnc.allowBandwidthSwitch, n, force_fs_kHz)
 		if ret != SilkError.SILK_NO_ERROR {
 			inlines.OpusAssert(false)
 			return ret
 		}
 
-		if psEnc.state_Fxx[n].first_frame_after_reset != 0 || transition != 0 {
-			for i := 0; i < psEnc.state_Fxx[0].nFramesPerPacket; i++ {
-				psEnc.state_Fxx[n].LBRR_flags[i] = 0
+		if psEnc.State_Fxx[n].first_frame_after_reset != 0 || transition != 0 {
+			for i := 0; i < psEnc.State_Fxx[0].nFramesPerPacket; i++ {
+				psEnc.State_Fxx[n].LBRR_flags[i] = 0
 			}
 		}
 
-		psEnc.state_Fxx[n].inDTX = psEnc.state_Fxx[n].useDTX
+		psEnc.State_Fxx[n].inDTX = psEnc.State_Fxx[n].useDTX
 	}
 
-	inlines.OpusAssert(encControl.nChannelsInternal == 1 || psEnc.state_Fxx[0].fs_kHz == psEnc.state_Fxx[1].fs_kHz)
+	inlines.OpusAssert(encControl.nChannelsInternal == 1 || psEnc.State_Fxx[0].fs_kHz == psEnc.state_Fxx[1].fs_kHz)
 
-	nSamplesToBufferMax = 10 * nBlocksOf10ms * psEnc.state_Fxx[0].fs_kHz
-	nSamplesFromInputMax = inlines.Silk_DIV32_16(nSamplesToBufferMax*psEnc.state_Fxx[0].API_fs_Hz, int(psEnc.state_Fxx[0].fs_kHz*1000))
+	nSamplesToBufferMax = 10 * nBlocksOf10ms * psEnc.State_Fxx[0].fs_kHz
+	nSamplesFromInputMax = inlines.Silk_DIV32_16(nSamplesToBufferMax*psEnc.State_Fxx[0].API_fs_Hz, int(psEnc.state_Fxx[0].fs_kHz*1000))
 
 	buf = make([]int16, nSamplesFromInputMax)
 
 	samplesIn_ptr := 0
 	for {
-		nSamplesToBuffer = psEnc.state_Fxx[0].frame_length - psEnc.state_Fxx[0].inputBufIx
+		nSamplesToBuffer = psEnc.State_Fxx[0].frame_length - psEnc.State_Fxx[0].inputBufIx
 		if nSamplesToBuffer > nSamplesToBufferMax {
 			nSamplesToBuffer = nSamplesToBufferMax
 		}
-		nSamplesFromInput = inlines.Silk_DIV32_16(nSamplesToBuffer*psEnc.state_Fxx[0].API_fs_Hz, int(psEnc.state_Fxx[0].fs_kHz*1000))
+		nSamplesFromInput = inlines.Silk_DIV32_16(nSamplesToBuffer*psEnc.State_Fxx[0].API_fs_Hz, int(psEnc.state_Fxx[0].fs_kHz*1000))
 
 		if encControl.nChannelsAPI == 2 && encControl.nChannelsInternal == 2 {
-			id := psEnc.state_Fxx[0].nFramesEncoded
+			id := psEnc.State_Fxx[0].nFramesEncoded
 			for n := 0; n < nSamplesFromInput; n++ {
 				buf[n] = samplesIn[samplesIn_ptr+2*n]
 			}
 
 			if psEnc.nPrevChannelsInternal == 1 && id == 0 {
-				psEnc.state_Fxx[1].resampler_state = psEnc.state_Fxx[0].resampler_state
+				psEnc.State_Fxx[1].resampler_state = psEnc.State_Fxx[0].resampler_state
 			}
 			/*
 
@@ -197,31 +197,31 @@ func silk_Encode(
 			*/
 
 			ret += silk.Silk_resampler(
-				psEnc.state_Fxx[0].resampler_state,
-				psEnc.state_Fxx[0].inputBuf,
-				psEnc.state_Fxx[0].inputBufIx+2,
+				psEnc.State_Fxx[0].resampler_state,
+				psEnc.State_Fxx[0].inputBuf,
+				psEnc.State_Fxx[0].inputBufIx+2,
 				buf,
 				0,
 				nSamplesFromInput)
 
-			psEnc.state_Fxx[0].inputBufIx += nSamplesToBuffer
+			psEnc.State_Fxx[0].inputBufIx += nSamplesToBuffer
 
-			nSamplesToBuffer = psEnc.state_Fxx[1].frame_length - psEnc.state_Fxx[1].inputBufIx
-			if nSamplesToBuffer > 10*nBlocksOf10ms*psEnc.state_Fxx[1].fs_kHz {
-				nSamplesToBuffer = 10 * nBlocksOf10ms * psEnc.state_Fxx[1].fs_kHz
+			nSamplesToBuffer = psEnc.State_Fxx[1].frame_length - psEnc.State_Fxx[1].inputBufIx
+			if nSamplesToBuffer > 10*nBlocksOf10ms*psEnc.State_Fxx[1].fs_kHz {
+				nSamplesToBuffer = 10 * nBlocksOf10ms * psEnc.State_Fxx[1].fs_kHz
 			}
 			for n := 0; n < nSamplesFromInput; n++ {
 				buf[n] = samplesIn[samplesIn_ptr+2*n+1]
 			}
 			ret += silk.Silk_resampler(
-				psEnc.state_Fxx[1].resampler_state,
-				psEnc.state_Fxx[1].inputBuf,
-				psEnc.state_Fxx[1].inputBufIx+2,
+				psEnc.State_Fxx[1].resampler_state,
+				psEnc.State_Fxx[1].inputBuf,
+				psEnc.State_Fxx[1].inputBufIx+2,
 				buf,
 				0,
 				nSamplesFromInput)
 
-			psEnc.state_Fxx[1].inputBufIx += nSamplesToBuffer
+			psEnc.State_Fxx[1].inputBufIx += nSamplesToBuffer
 		} else if encControl.nChannelsAPI == 2 && encControl.nChannelsInternal == 1 {
 			for n := 0; n < nSamplesFromInput; n++ {
 				sum = int(samplesIn[samplesIn_ptr+2*n]) + int(samplesIn[samplesIn_ptr+2*n+1])

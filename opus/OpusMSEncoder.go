@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/dosgo/libopus/celt"
+	"github.com/dosgo/libopus/comm"
 	"github.com/dosgo/libopus/opusConstants"
 )
 
@@ -120,8 +121,8 @@ func surround_analysis(celt_mode *celt.CeltMode, pcm []int16, pcm_ptr int, bandL
 	frame_size := len * upsample
 
 	LM := 0
-	for ; LM < celt_mode.maxLM; LM++ {
-		if celt_mode.shortMdctSize<<LM == frame_size {
+	for ; LM < celt_mode.MaxLM; LM++ {
+		if celt_mode.ShortMdctSize<<LM == frame_size {
 			break
 		}
 	}
@@ -145,13 +146,13 @@ func surround_analysis(celt_mode *celt.CeltMode, pcm []int16, pcm_ptr int, bandL
 		copy(input[:overlap], mem[c*overlap:(c*overlap)+overlap])
 		opus_copy_channel_in_short(x, 0, 1, pcm, pcm_ptr, channels, c, len)
 
-		boxed_preemph := BoxedValueInt{preemph_mem[c]}
+		boxed_preemph := comm.BoxedValueInt{preemph_mem[c]}
 		//celt_preemphasis(x, input, overlap, frame_size, 1, upsample, celt_mode.preemph, &boxed_preemph, 0)
 		//celt_preemphasis(x, input, overlap, frame_size, 1, upsample, celt_mode.preemph, boxed_preemph, 0)
-		celt.Celt_preemphasis1(x, input, overlap, frame_size, 1, upsample, celt_mode.preemph, &boxed_preemph, 0)
+		celt.Celt_preemphasis1(x, input, overlap, frame_size, 1, upsample, celt_mode.Preemph, &boxed_preemph, 0)
 		preemph_mem[c] = boxed_preemph.Val
 
-		celt.Clt_mdct_forward(celt_mode.Mdct, input, 0, freq[0], 0, celt_mode.window, overlap, celt_mode.maxLM-LM, 1)
+		celt.Clt_mdct_forward(celt_mode.Mdct, input, 0, freq[0], 0, celt_mode.Window, overlap, celt_mode.MaxLM-LM, 1)
 		if upsample != 1 {
 			bound := len
 			for i := 0; i < bound; i++ {
@@ -266,7 +267,7 @@ func (st *OpusMSEncoder) opus_multistream_encoder_init(Fs, channels, streams, co
 	return OpusError.OPUS_OK
 }
 
-func (st *OpusMSEncoder) opus_multistream_surround_encoder_init(Fs, channels, mapping_family int, streams, coupled_streams *BoxedValueInt, mapping []int16, application OpusApplication) int {
+func (st *OpusMSEncoder) opus_multistream_surround_encoder_init(Fs, channels, mapping_family int, streams, coupled_streams *comm.BoxedValueInt, mapping []int16, application OpusApplication) int {
 	streams.Val = 0
 	coupled_streams.Val = 0
 	if channels > 255 || channels < 1 {
@@ -325,7 +326,7 @@ func CreateOpusMSEncoder(Fs, channels, streams, coupled_streams int, mapping []i
 	return st, nil
 }
 
-func GetStreamCount(channels, mapping_family int, nb_streams, nb_coupled_streams *BoxedValueInt) error {
+func GetStreamCount(channels, mapping_family int, nb_streams, nb_coupled_streams *comm.BoxedValueInt) error {
 	if mapping_family == 0 {
 		if channels == 1 {
 			nb_streams.Val = 1
@@ -348,12 +349,12 @@ func GetStreamCount(channels, mapping_family int, nb_streams, nb_coupled_streams
 	return nil
 }
 
-func CreateSurroundOpusMSEncoder(Fs, channels, mapping_family int, streams, coupled_streams *BoxedValueInt, mapping []int16, application OpusApplication) (*OpusMSEncoder, error) {
+func CreateSurroundOpusMSEncoder(Fs, channels, mapping_family int, streams, coupled_streams *comm.BoxedValueInt, mapping []int16, application OpusApplication) (*OpusMSEncoder, error) {
 	if channels > 255 || channels < 1 || application == OPUS_APPLICATION_UNIMPLEMENTED {
 		return nil, errors.New("Invalid channel count or application")
 	}
-	nb_streams := BoxedValueInt{0}
-	nb_coupled_streams := BoxedValueInt{0}
+	nb_streams := comm.BoxedValueInt{0}
+	nb_coupled_streams := comm.BoxedValueInt{0}
 	err := GetStreamCount(channels, mapping_family, &nb_streams, &nb_coupled_streams)
 	if err != nil {
 		return nil, err
@@ -436,7 +437,7 @@ func (st *OpusMSEncoder) opus_multistream_encode_native(pcm []int16, pcm_ptr, an
 	celt_mode = st.encoders[encoder_ptr].GetCeltMode()
 
 	delay_compensation := st.encoders[encoder_ptr].GetLookahead() - Fs/400
-	frame_size = compute_frame_size(pcm, pcm_ptr, analysis_frame_size, st.variable_duration, st.layout.nb_channels, Fs, st.bitrate_bps, delay_compensation, st.subframe_mem[:], st.encoders[encoder_ptr].analysis.enabled)
+	frame_size = compute_frame_size(pcm, pcm_ptr, analysis_frame_size, st.variable_duration, st.layout.nb_channels, Fs, st.bitrate_bps, delay_compensation, st.subframe_mem[:], st.encoders[encoder_ptr].analysis.Enabled)
 
 	if 400*frame_size < Fs {
 		return OpusError.OPUS_BAD_ARG

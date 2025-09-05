@@ -249,7 +249,7 @@ func (this *OpusDecoder) opus_decode_frame(data []byte, data_ptr int, len int, p
 		for {
 			/* Call SILK decoder */
 			first_frame := boolToInt(decoded_samples == 0)
-			boxed_silk_frame_size := &BoxedValueInt{0}
+			boxed_silk_frame_size := &comm.BoxedValueInt{0}
 			silk_ret = silk_Decode(&this.SilkDecoder, &this.DecControl,
 				lost_flag, first_frame, &dec, pcm_ptr2, pcm_ptr2_ptr, boxed_silk_frame_size)
 			silk_frame_size = boxed_silk_frame_size.Val
@@ -435,7 +435,7 @@ func (this *OpusDecoder) opus_decode_frame(data []byte, data_ptr int, len int, p
 	return audiosize
 }
 
-func (this *OpusDecoder) opus_decode_native(data []byte, data_ptr int, len int, pcm_out []int16, pcm_out_ptr int, frame_size int, decode_fec int, self_delimited int, packet_offset *BoxedValueInt, soft_clip int) int {
+func (this *OpusDecoder) opus_decode_native(data []byte, data_ptr int, len int, pcm_out []int16, pcm_out_ptr int, frame_size int, decode_fec int, self_delimited int, packet_offset *comm.BoxedValueInt, soft_clip int) int {
 	var i, nb_samples int
 	var count, offset int
 	var packet_frame_size, packet_stream_channels int
@@ -471,8 +471,8 @@ func (this *OpusDecoder) opus_decode_native(data []byte, data_ptr int, len int, 
 
 	packet_stream_channels = GetNumEncodedChannels(data, data_ptr)
 
-	var toc BoxedValueByte = BoxedValueByte{0}
-	boxed_offset := BoxedValueInt{0}
+	var toc comm.BoxedValueByte = comm.BoxedValueByte{0}
+	boxed_offset := comm.BoxedValueInt{0}
 	//count = opus_packet_parse_impl(data, data_ptr, len, self_delimited, &toc, nil, 0, size, 0, offset, packet_offset)
 	count = opus_packet_parse_impl(data, data_ptr, len, self_delimited, &toc, nil, 0,
 		size, 0, &boxed_offset, packet_offset)
@@ -485,7 +485,7 @@ func (this *OpusDecoder) opus_decode_native(data []byte, data_ptr int, len int, 
 
 	if decode_fec != 0 {
 
-		dummy := BoxedValueInt{0}
+		dummy := comm.BoxedValueInt{0}
 		duration_copy := this.last_packet_duration
 		var ret int
 		if frame_size < packet_frame_size || packet_mode == MODE_CELT_ONLY || this.mode == MODE_CELT_ONLY {
@@ -542,7 +542,7 @@ func (this *OpusDecoder) Decode(in_data []byte, in_data_offset int, len int, out
 		return 0, errors.New("Frame size must be > 0")
 	}
 
-	dummy := BoxedValueInt{0}
+	dummy := comm.BoxedValueInt{0}
 	decode_fec_int := 0
 	if decode_fec {
 		decode_fec_int = 1

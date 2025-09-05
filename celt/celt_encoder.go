@@ -257,7 +257,7 @@ func (this *CeltEncoder) run_prefilter(input [][]int, prefilter_mem [][]int, CC 
 	qgain.Val = qg
 
 	for c := 0; c < CC; c++ {
-		offset := mode.shortMdctSize - overlap
+		offset := mode.ShortMdctSize - overlap
 		if this.prefilter_period < CeltConstants.COMBFILTER_MINPERIOD {
 			this.prefilter_period = CeltConstants.COMBFILTER_MINPERIOD
 		}
@@ -278,7 +278,7 @@ func (this *CeltEncoder) run_prefilter(input [][]int, prefilter_mem [][]int, CC 
 	return pf_on
 }
 
-func (this *CeltEncoder) celt_encode_with_ec(pcm []int16, pcm_ptr int, frame_size int, compressed []byte, compressed_ptr int, nbCompressedBytes int, enc *comm.EntropyCoder) int {
+func (this *CeltEncoder) Celt_encode_with_ec(pcm []int16, pcm_ptr int, frame_size int, compressed []byte, compressed_ptr int, nbCompressedBytes int, enc *comm.EntropyCoder) int {
 	//PrintFuncArgs(pcm, pcm_ptr, frame_size, compressed, compressed_ptr, nbCompressedBytes, enc)
 
 	var i, c, N int
@@ -356,16 +356,16 @@ func (this *CeltEncoder) celt_encode_with_ec(pcm []int16, pcm_ptr int, frame_siz
 	}
 
 	frame_size *= this.upsample
-	for LM = 0; LM <= mode.maxLM; LM++ {
-		if mode.shortMdctSize<<LM == frame_size {
+	for LM = 0; LM <= mode.MaxLM; LM++ {
+		if mode.ShortMdctSize<<LM == frame_size {
 			break
 		}
 	}
-	if LM > mode.maxLM {
+	if LM > mode.MaxLM {
 		return OpusError.OPUS_BAD_ARG
 	}
 	M = 1 << LM
-	N = M * mode.shortMdctSize
+	N = M * mode.ShortMdctSize
 
 	if enc == nil {
 		tell = 1
@@ -864,7 +864,7 @@ func (this *CeltEncoder) celt_encode_with_ec(pcm []int16, pcm_ptr int, frame_siz
 		/* The target rate in 8th bits per frame */
 		var target, base_target int
 		var min_allowed int
-		var lm_diff = mode.maxLM - LM
+		var lm_diff = mode.MaxLM - LM
 
 		/* Don't attempt to use more than 510 kb/s, even for frames smaller than 20 ms.
 		   The CELT allocator will just not be able to use more than that anyway. */

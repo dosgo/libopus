@@ -12,8 +12,8 @@ func silk_InitDecoder(decState *silk.SilkDecoder) int {
 	for n := 0; n < SilkConstants.DECODER_NUM_CHANNELS; n++ {
 		ret = channel_states[n].silk_init_decoder()
 	}
-	decState.sStereo.Reset()
-	decState.prev_decode_only_middle = 0
+	decState.SStereo.Reset()
+	decState.Prev_decode_only_middle = 0
 	return ret
 }
 

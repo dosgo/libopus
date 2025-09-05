@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/dosgo/libopus/celt"
+	"github.com/dosgo/libopus/comm"
 	"github.com/dosgo/libopus/opusConstants"
 	"github.com/dosgo/libopus/silk"
 )
@@ -27,13 +28,13 @@ type OpusEncoder struct {
 	Fs                      int
 	use_vbr                 int
 	vbr_constraint          int
-	variable_duration       OpusFramesize
+	variable_duration       int
 	bitrate_bps             int
 	user_bitrate_bps        int
 	lsb_depth               int
 	encoder_buffer          int
 	lfe                     int
-	analysis                TonalityAnalysisState
+	analysis                celt.TonalityAnalysisState
 	stream_channels         int
 	hybrid_stereo_width_Q14 int16
 	variable_HP_smth2_Q15   int
@@ -48,11 +49,11 @@ type OpusEncoder struct {
 	first                   int
 	energy_masking          []int
 	width_mem               StereoWidthState
-	delay_buffer            [MAX_ENCODER_BUFFER * 2]int16
+	delay_buffer            [opusConstants.MAX_ENCODER_BUFFER * 2]int16
 	detected_bandwidth      int
 	rangeFinal              int
-	SilkEncoder             SilkEncoder
-	Celt_Encoder            CeltEncoder
+	SilkEncoder             silk.SilkEncoder
+	Celt_Encoder            celt.CeltEncoder
 }
 
 func (st *OpusEncoder) reset() {
@@ -104,7 +105,7 @@ func (st *OpusEncoder) PartialReset() {
 }
 
 func (st *OpusEncoder) ResetState() {
-	dummy := EncControlState{}
+	dummy := silk.EncControlState{}
 	st.analysis.Reset()
 	st.PartialReset()
 	st.Celt_Encoder.ResetState()
@@ -115,7 +116,7 @@ func (st *OpusEncoder) ResetState() {
 	st.first = 1
 	st.mode = MODE_HYBRID
 	st.bandwidth = OPUS_BANDWIDTH_FULLBAND
-	st.variable_HP_smth2_Q15 = inlines.Silk_LSHIFT(silk_lin2log(TuningParameters.VARIABLE_HP_MIN_CUTOFF_HZ), 8)
+	st.variable_HP_smth2_Q15 = inlines.Silk_LSHIFT(inlines.Silk_lin2log(TuningParameters.VARIABLE_HP_MIN_CUTOFF_HZ), 8)
 }
 
 func NewOpusEncoder(Fs, channels int, application OpusApplication) (*OpusEncoder, error) {
@@ -418,10 +419,10 @@ func (st *OpusEncoder) opus_encode_native(pcm []int16, pcm_ptr, frame_size int, 
 		var threshold int
 
 		/* Interpolate based on stereo width */
-		mode_voice = MULT16_32_Q15Int(CeltConstants.Q15ONE-stereo_width, mode_thresholds[0][0]) +
-			MULT16_32_Q15Int(stereo_width, mode_thresholds[1][0])
-		mode_music = MULT16_32_Q15Int(CeltConstants.Q15ONE-stereo_width, mode_thresholds[1][1]) +
-			MULT16_32_Q15Int(stereo_width, mode_thresholds[1][1])
+		mode_voice = inlines.MULT16_32_Q15Int(CeltConstants.Q15ONE-stereo_width, mode_thresholds[0][0]) +
+			inlines.MULT16_32_Q15Int(stereo_width, mode_thresholds[1][0])
+		mode_music = inlines.MULT16_32_Q15Int(CeltConstants.Q15ONE-stereo_width, mode_thresholds[1][1]) +
+			inlines.MULT16_32_Q15Int(stereo_width, mode_thresholds[1][1])
 		/* Interpolate based on speech/music probability */
 		threshold = mode_music + ((voice_est * voice_est * (mode_voice - mode_music)) >> 14)
 		/* Bias towards SILK for VoIP because of some useful features */
@@ -805,7 +806,7 @@ func (st *OpusEncoder) opus_encode_native(pcm []int16, pcm_ptr, frame_size int, 
 					HB_gain_ref = 3000
 				}
 
-				HB_gain = SHL32(celt_rate, 9) / SHR32(celt_rate+st.stream_channels*HB_gain_ref, 6)
+				HB_gain = inlines.SHL32(celt_rate, 9) / SHR32(celt_rate+st.stream_channels*HB_gain_ref, 6)
 				if HB_gain < CeltConstants.Q15ONE*6/7 {
 					HB_gain = HB_gain + CeltConstants.Q15ONE/7
 				} else {
@@ -907,11 +908,11 @@ func (st *OpusEncoder) opus_encode_native(pcm []int16, pcm_ptr, frame_size int, 
 		if st.silk_mode.useCBR != 0 {
 			st.silk_mode.maxBits = (st.silk_mode.bitRate * frame_size / (st.Fs * 8)) * 8
 			/* Reduce the initial target to make it easier to reach the CBR rate */
-			st.silk_mode.bitRate = IMAX(1, st.silk_mode.bitRate-2000)
+			st.silk_mode.bitRate = inlines.IMAX(1, st.silk_mode.bitRate-2000)
 		}
 
 		if prefill != 0 {
-			zero := &BoxedValueInt{0}
+			zero := &comm.BoxedValueInt{0}
 			var prefill_offset int
 
 			/* Use a smooth onset for the SILK prefill to avoid the encoder trying to encode
@@ -932,7 +933,7 @@ func (st *OpusEncoder) opus_encode_native(pcm []int16, pcm_ptr, frame_size int, 
 		//System.arraycopy(pcm_buf, total_buffer*st.channels, pcm_silk, 0, frame_size*st.channels)
 		copy(pcm_silk, pcm_buf[total_buffer*st.channels:total_buffer*st.channels+frame_size*st.channels])
 
-		boxed_silkBytes := &BoxedValueInt{nBytes}
+		boxed_silkBytes := &comm.BoxedValueInt{nBytes}
 		ret = silk_Encode(silk_enc, &st.silk_mode, pcm_silk, frame_size, enc, boxed_silkBytes, 0)
 		nBytes = boxed_silkBytes.Val
 
@@ -996,7 +997,7 @@ func (st *OpusEncoder) opus_encode_native(pcm []int16, pcm_ptr, frame_size int, 
 		var celt_pred int = 2
 		celt_enc.SetVBR(false)
 		/* We may still decide to disable prediction later */
-		if st.silk_mode.reducedDependency != 0 {
+		if st.silk_mode.ReducedDependency != 0 {
 			celt_pred = 0
 		}
 		celt_enc.SetPrediction(celt_pred)
@@ -1025,7 +1026,7 @@ func (st *OpusEncoder) opus_encode_native(pcm []int16, pcm_ptr, frame_size int, 
 			}
 		} else if st.use_vbr != 0 {
 			var bonus int = 0
-			if st.analysis.enabled && st.variable_duration == OPUS_FRAMESIZE_VARIABLE && frame_size != st.Fs/50 {
+			if st.analysis.Enabled && st.variable_duration == OPUS_FRAMESIZE_VARIABLE && frame_size != st.Fs/50 {
 				bonus = (60*st.stream_channels + 40) * (st.Fs/frame_size - 50)
 				if analysis_info.valid != 0 {
 					bonus = (bonus * int(1.0+.5*analysis_info.tonality))
@@ -1069,7 +1070,7 @@ func (st *OpusEncoder) opus_encode_native(pcm []int16, pcm_ptr, frame_size int, 
 
 	st.prev_HB_gain = HB_gain
 	if st.mode != MODE_HYBRID || st.stream_channels == 1 {
-		st.silk_mode.stereoWidth_Q14 = inlines.IMIN((1 << 14), 2*IMAX(0, equiv_rate-30000))
+		st.silk_mode.stereoWidth_Q14 = inlines.IMIN((1 << 14), 2*inlines.IMAX(0, equiv_rate-30000))
 	}
 	if st.energy_masking == nil && st.channels == 2 {
 		/* Apply stereo width reduction (at low bitrates) */
@@ -1110,7 +1111,7 @@ func (st *OpusEncoder) opus_encode_native(pcm []int16, pcm_ptr, frame_size int, 
 			/* Target the same bit-rate for redundancy as for the rest,
 			   up to a max of 257 bytes */
 			redundancy_bytes = inlines.IMIN(max_redundancy, st.bitrate_bps/1600)
-			redundancy_bytes = inlines.IMIN(257, IMAX(2, redundancy_bytes))
+			redundancy_bytes = inlines.IMIN(257, inlines.IMAX(2, redundancy_bytes))
 			if st.mode == MODE_HYBRID {
 				enc.enc_uint(int64(redundancy_bytes-2), 256)
 			}
@@ -1136,8 +1137,8 @@ func (st *OpusEncoder) opus_encode_native(pcm []int16, pcm_ptr, frame_size int, 
 		enc.enc_shrink(nb_compr_bytes)
 	}
 
-	if st.analysis.enabled && redundancy != 0 || st.mode != MODE_SILK_ONLY {
-		analysis_info.enabled = st.analysis.enabled
+	if st.analysis.Enabled && redundancy != 0 || st.mode != MODE_SILK_ONLY {
+		analysis_info.enabled = st.analysis.Enabled
 		celt_enc.SetAnalysis(&analysis_info)
 	}
 	/* 5 ms redundant frame for CELT->SILK */
@@ -1190,9 +1191,9 @@ func (st *OpusEncoder) opus_encode_native(pcm []int16, pcm_ptr, frame_size int, 
 		celt_enc.SetPrediction(0)
 
 		/* NOTE: We could speed this up slightly (at the expense of code size) by just adding a function that prefills the buffer */
-		celt_enc.celt_encode_with_ec(pcm_buf, (st.channels * (frame_size - N2 - N4)), N4, dummy, 0, 2, nil)
+		celt_enc.Celt_encode_with_ec(pcm_buf, (st.channels * (frame_size - N2 - N4)), N4, dummy, 0, 2, nil)
 
-		err = celt_enc.celt_encode_with_ec(pcm_buf, (st.channels * (frame_size - N2)), N2, data, data_ptr+nb_compr_bytes, redundancy_bytes, nil)
+		err = celt_enc.Celt_encode_with_ec(pcm_buf, (st.channels * (frame_size - N2)), N2, data, data_ptr+nb_compr_bytes, redundancy_bytes, nil)
 		if err < 0 {
 			return OpusError.OPUS_INTERNAL_ERROR
 		}
@@ -1528,11 +1529,4 @@ func btol(b bool) int {
 		return 1
 	}
 	return 0
-}
-
-func imax(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }

@@ -122,7 +122,7 @@ func normalise_bands(m *CeltMode, freq [][]int, X [][]int, bandE [][]int, end in
 
 func denormalise_bands(m *CeltMode, X []int, freq []int, freq_ptr int, bandLogE []int, bandLogE_ptr int, start int, end int, M int, downsample int, silence int) {
 	eBands := m.eBands
-	N := M * m.shortMdctSize
+	N := M * m.ShortMdctSize
 	bound := M * int(eBands[end])
 	if downsample != 1 {
 		bound = inlines.IMIN(bound, N/downsample)
