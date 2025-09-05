@@ -115,7 +115,7 @@ func pitch_downsample(x [][]int, x_lp []int, len int, C int) {
 		x_lp[0] += inlines.SHR32(inlines.HALF32(inlines.HALF32(x[1][1])+x[1][0]), shift)
 	}
 
-	_celt_autocorr_with_window(x_lp, ac, nil, 0, 4, halflen)
+	comm.Celt_autocorr_with_window(x_lp, ac, nil, 0, 4, halflen)
 
 	ac[0] += inlines.SHR32(ac[0], 13)
 	for i := 1; i <= 4; i++ {
@@ -168,7 +168,7 @@ func pitch_search(x_lp []int, x_lp_ptr int, y []int, len int, max_pitch int, pit
 		shift = 0
 	}
 
-	maxcorr := pitch_xcorr(x_lp4, y_lp4, xcorr, len>>2, max_pitch>>2)
+	maxcorr := comm.Pitch_xcorr(x_lp4, y_lp4, xcorr, len>>2, max_pitch>>2)
 	best_pitch := []int{0, 0}
 	find_best_pitch(xcorr, y_lp4, len>>2, max_pitch>>2, best_pitch, 0, maxcorr)
 

@@ -92,12 +92,12 @@ func (l *laplace) ec_laplace_encode(enc *comm.EntropyCoder, value *comm.BoxedVal
 		inlines.OpusAssert(fs > 0)
 	}
 
-	enc.encode_bin(fl, (fl + fs), 15)
+	enc.Encode_bin(fl, (fl + fs), 15)
 }
 
 func (l *laplace) ec_laplace_decode(dec *comm.EntropyCoder, fs int64, decay int) int {
 	val := 0
-	fm := dec.decode_bin(15)
+	fm := dec.Decode_bin(15)
 	fl := int64(0)
 
 	if fm >= int64(fs) {
@@ -127,6 +127,6 @@ func (l *laplace) ec_laplace_decode(dec *comm.EntropyCoder, fs int64, decay int)
 	inlines.OpusAssert(int64(fl) <= fm)
 	inlines.OpusAssert(fm < int64(inlines.IMIN(int(fl+fs), 32768)))
 
-	dec.dec_update(int64(fl), int64(inlines.IMIN(int(fl+fs), 32768)), 32768)
+	dec.Dec_update(int64(fl), int64(inlines.IMIN(int(fl+fs), 32768)), 32768)
 	return val
 }

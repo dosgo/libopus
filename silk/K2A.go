@@ -1,4 +1,4 @@
-package opus
+package silk
 
 /* Step up function, converts reflection coefficients to prediction coefficients */
 func silk_k2a(
@@ -14,9 +14,9 @@ func silk_k2a(
 			Atmp[n] = A_Q24[n]
 		}
 		for n = 0; n < k; n++ {
-			A_Q24[n] = silk_SMLAWB(A_Q24[n], silk_LSHIFT(Atmp[k-n-1], 1), int(rc_Q15[k]))
+			A_Q24[n] = inlines.Silk_SMLAWB(A_Q24[n], inlines.Silk_LSHIFT(Atmp[k-n-1], 1), int(rc_Q15[k]))
 		}
-		A_Q24[k] = 0 - silk_LSHIFT(int(rc_Q15[k]), 9)
+		A_Q24[k] = 0 - inlines.Silk_LSHIFT(int(rc_Q15[k]), 9)
 	}
 }
 
@@ -33,9 +33,9 @@ func silk_k2a_Q16(
 			Atmp[n] = A_Q24[n]
 		}
 		for n = 0; n < k; n++ {
-			A_Q24[n] = silk_SMLAWW(A_Q24[n], Atmp[k-n-1], rc_Q16[k])
+			A_Q24[n] = inlines.Silk_SMLAWW(A_Q24[n], Atmp[k-n-1], rc_Q16[k])
 		}
 
-		A_Q24[k] = 0 - (silk_LSHIFT((rc_Q16[k]), (8)))
+		A_Q24[k] = 0 - (inlines.Silk_LSHIFT((rc_Q16[k]), (8)))
 	}
 }

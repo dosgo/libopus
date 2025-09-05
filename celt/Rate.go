@@ -54,7 +54,7 @@ func pulses2bits(m *CeltMode, band int, LM int, pulses int) int {
 	}
 	return int(m.cache.bits[int(m.cache.index[LM*m.nbEBands+band])+pulses] + 1)
 }
-func interp_bits2pulses(m *CeltMode, start int, end int, skip_start int, bits1 []int, bits2 []int, thresh []int, cap []int, total int, _balance *comm.BoxedValueInt, skip_rsv int, intensity *comm.BoxedValueInt, intensity_rsv int, dual_stereo *comm.BoxedValueInt, dual_stereo_rsv int, bits []int, ebits []int, fine_priority []int, C int, LM int, ec *EntropyCoder, encode int, prev int, signalBandwidth int) int {
+func interp_bits2pulses(m *CeltMode, start int, end int, skip_start int, bits1 []int, bits2 []int, thresh []int, cap []int, total int, _balance *comm.BoxedValueInt, skip_rsv int, intensity *comm.BoxedValueInt, intensity_rsv int, dual_stereo *comm.BoxedValueInt, dual_stereo_rsv int, bits []int, ebits []int, fine_priority []int, C int, LM int, ec *comm.EntropyCoder, encode int, prev int, signalBandwidth int) int {
 	var psum int
 	var lo, hi int
 	var i, j int
@@ -136,11 +136,11 @@ func interp_bits2pulses(m *CeltMode, start int, end int, skip_start int, bits1 [
 					}
 					return 9
 				}())*band_width<<LM<<BITRES)>>4 && j <= signalBandwidth) {
-					ec.enc_bit_logp(1, 1)
+					ec.Enc_bit_logp(1, 1)
 					break
 				}
-				ec.enc_bit_logp(0, 1)
-			} else if ec.dec_bit_logp(1) != 0 {
+				ec.Enc_bit_logp(0, 1)
+			} else if ec.Dec_bit_logp(1) != 0 {
 				break
 			}
 			psum += 1 << BITRES
@@ -166,9 +166,9 @@ func interp_bits2pulses(m *CeltMode, start int, end int, skip_start int, bits1 [
 			if intensity.Val > codedBands {
 				intensity.Val = codedBands
 			}
-			ec.enc_uint(int64(intensity.Val-start), int64(codedBands+1-start))
+			ec.Enc_uint(int64(intensity.Val-start), int64(codedBands+1-start))
 		} else {
-			intensity.Val = start + int(ec.dec_uint(int64(codedBands+1-start)))
+			intensity.Val = start + int(ec.Dec_uint(int64(codedBands+1-start)))
 		}
 	} else {
 		intensity.Val = 0
@@ -180,9 +180,9 @@ func interp_bits2pulses(m *CeltMode, start int, end int, skip_start int, bits1 [
 	}
 	if dual_stereo_rsv > 0 {
 		if encode != 0 {
-			ec.enc_bit_logp(dual_stereo.Val, 1)
+			ec.Enc_bit_logp(dual_stereo.Val, 1)
 		} else {
-			dual_stereo.Val = ec.dec_bit_logp(1)
+			dual_stereo.Val = ec.Dec_bit_logp(1)
 		}
 	} else {
 		dual_stereo.Val = 0
@@ -291,7 +291,7 @@ func interp_bits2pulses(m *CeltMode, start int, end int, skip_start int, bits1 [
 	return codedBands
 }
 
-func compute_allocation(m *CeltMode, start int, end int, offsets []int, cap []int, alloc_trim int, intensity *comm.BoxedValueInt, dual_stereo *comm.BoxedValueInt, total int, balance *comm.BoxedValueInt, pulses []int, ebits []int, fine_priority []int, C int, LM int, ec *EntropyCoder, encode int, prev int, signalBandwidth int) int {
+func compute_allocation(m *CeltMode, start int, end int, offsets []int, cap []int, alloc_trim int, intensity *comm.BoxedValueInt, dual_stereo *comm.BoxedValueInt, total int, balance *comm.BoxedValueInt, pulses []int, ebits []int, fine_priority []int, C int, LM int, ec *comm.EntropyCoder, encode int, prev int, signalBandwidth int) int {
 	total = inlines.IMIN(total, 0)
 	len := m.nbEBands
 	skip_start := start

@@ -1,7 +1,9 @@
-package opus
+package silk
 
 import (
 	"math"
+
+	"github.com/dosgo/libopus/comm"
 )
 
 func silk_find_pitch_lags(psEnc *SilkChannelEncoder, psEncCtrl *SilkEncoderControl, res []int16, x []int16, x_ptr int) {
@@ -17,7 +19,7 @@ func silk_find_pitch_lags(psEnc *SilkChannelEncoder, psEncCtrl *SilkEncoderContr
 
 	buf_len = psEnc.la_pitch + psEnc.frame_length + psEnc.ltp_mem_length
 
-	OpusAssert(buf_len >= psEnc.pitch_LPC_win_length)
+	inlines.OpusAssert(buf_len >= psEnc.pitch_LPC_win_length)
 
 	x_buf = x_ptr - psEnc.ltp_mem_length
 
@@ -29,29 +31,29 @@ func silk_find_pitch_lags(psEnc *SilkChannelEncoder, psEncCtrl *SilkEncoderContr
 
 	Wsig_ptr += psEnc.la_pitch
 	x_buf_ptr += psEnc.la_pitch
-	copy(Wsig[Wsig_ptr:], x[x_buf_ptr:x_buf_ptr+(psEnc.pitch_LPC_win_length-silk_LSHIFT(psEnc.la_pitch, 1))])
+	copy(Wsig[Wsig_ptr:], x[x_buf_ptr:x_buf_ptr+(psEnc.pitch_LPC_win_length-inlines.Silk_LSHIFT(psEnc.la_pitch, 1))])
 
-	Wsig_ptr += psEnc.pitch_LPC_win_length - silk_LSHIFT(psEnc.la_pitch, 1)
-	x_buf_ptr += psEnc.pitch_LPC_win_length - silk_LSHIFT(psEnc.la_pitch, 1)
+	Wsig_ptr += psEnc.pitch_LPC_win_length - inlines.Silk_LSHIFT(psEnc.la_pitch, 1)
+	x_buf_ptr += psEnc.pitch_LPC_win_length - inlines.Silk_LSHIFT(psEnc.la_pitch, 1)
 	silk_apply_sine_window(Wsig, Wsig_ptr, x, x_buf_ptr, 2, psEnc.la_pitch)
 
-	boxed_scale := BoxedValueInt{0}
+	boxed_scale := comm.BoxedValueInt{0}
 
-	silk_autocorr(auto_corr[:], &boxed_scale, Wsig, psEnc.pitch_LPC_win_length, psEnc.pitchEstimationLPCOrder+1)
+	comm.Silk_autocorr(auto_corr[:], &boxed_scale, Wsig, psEnc.pitch_LPC_win_length, psEnc.pitchEstimationLPCOrder+1)
 	//	scale = boxed_scale.Val
-	auto_corr[0] = silk_SMLAWB(auto_corr[0], auto_corr[0], int((TuningParameters.FIND_PITCH_WHITE_NOISE_FRACTION)*(1<<16)+0.5)) + 1
+	auto_corr[0] = inlines.Silk_SMLAWB(auto_corr[0], auto_corr[0], int((TuningParameters.FIND_PITCH_WHITE_NOISE_FRACTION)*(1<<16)+0.5)) + 1
 
 	res_nrg = silk_schur(rc_Q15[:], auto_corr[:], psEnc.pitchEstimationLPCOrder)
 
 	if res_nrg < 1 {
 		res_nrg = 1
 	}
-	psEncCtrl.predGain_Q16 = silk_DIV32_varQ(auto_corr[0], int(res_nrg), 16)
+	psEncCtrl.predGain_Q16 = inlines.Silk_DIV32_varQ(auto_corr[0], int(res_nrg), 16)
 
 	silk_k2a(A_Q24[:], rc_Q15[:], psEnc.pitchEstimationLPCOrder)
 
 	for i = 0; i < psEnc.pitchEstimationLPCOrder; i++ {
-		A_Q12[i] = int16(silk_SAT16(silk_RSHIFT(A_Q24[i], 12)))
+		A_Q12[i] = int16(inlines.Silk_SAT16(inlines.Silk_RSHIFT(A_Q24[i], 12)))
 	}
 
 	silk_bwexpander(A_Q12[:], psEnc.pitchEstimationLPCOrder, int((TuningParameters.FIND_PITCH_BANDWIDTH_EXPANSION)*(1<<16)+0.5))
@@ -62,16 +64,16 @@ func silk_find_pitch_lags(psEnc *SilkChannelEncoder, psEncCtrl *SilkEncoderContr
 
 		thrhld_Q13 = int(math.Trunc(((0.6)*float64(int64(1)<<(13)) + 0.5)))
 
-		thrhld_Q13 = silk_SMLABB(thrhld_Q13, int(math.Trunc((-0.004)*float64(int64(1)<<(13))+0.5)), psEnc.pitchEstimationLPCOrder)
+		thrhld_Q13 = inlines.Silk_SMLABB(thrhld_Q13, int(math.Trunc((-0.004)*float64(int64(1)<<(13))+0.5)), psEnc.pitchEstimationLPCOrder)
 
-		thrhld_Q13 = silk_SMLAWB(thrhld_Q13, int(math.Trunc((-0.1)*float64(int64(1)<<(21))+0.5)), psEnc.speech_activity_Q8)
-		thrhld_Q13 = silk_SMLABB(thrhld_Q13, int(math.Trunc((-0.15)*float64(int64(1)<<(13))+0.5)), silk_RSHIFT(int(psEnc.prevSignalType), 1))
-		thrhld_Q13 = silk_SMLAWB(thrhld_Q13, int(math.Trunc((-0.1)*float64(int64(1)<<(14))+0.5)), psEnc.input_tilt_Q15)
-		thrhld_Q13 = silk_SAT16(thrhld_Q13)
+		thrhld_Q13 = inlines.Silk_SMLAWB(thrhld_Q13, int(math.Trunc((-0.1)*float64(int64(1)<<(21))+0.5)), psEnc.speech_activity_Q8)
+		thrhld_Q13 = inlines.Silk_SMLABB(thrhld_Q13, int(math.Trunc((-0.15)*float64(int64(1)<<(13))+0.5)), inlines.Silk_RSHIFT(int(psEnc.prevSignalType), 1))
+		thrhld_Q13 = inlines.Silk_SMLAWB(thrhld_Q13, int(math.Trunc((-0.1)*float64(int64(1)<<(14))+0.5)), psEnc.input_tilt_Q15)
+		thrhld_Q13 = inlines.Silk_SAT16(thrhld_Q13)
 
-		lagIndex := BoxedValueShort{psEnc.indices.lagIndex}
-		contourIndex := BoxedValueByte{psEnc.indices.contourIndex}
-		LTPcorr_Q15 := BoxedValueInt{psEnc.LTPCorr_Q15}
+		lagIndex := comm.BoxedValueShort{psEnc.indices.lagIndex}
+		contourIndex := comm.BoxedValueByte{psEnc.indices.contourIndex}
+		LTPcorr_Q15 := comm.BoxedValueInt{psEnc.LTPCorr_Q15}
 
 		if silk_pitch_analysis_core(res, psEncCtrl.pitchL[:], &lagIndex, &contourIndex, &LTPcorr_Q15, psEnc.prevLag, psEnc.pitchEstimationThreshold_Q16, thrhld_Q13, psEnc.fs_kHz, psEnc.pitchEstimationComplexity, psEnc.nb_subfr) == 0 {
 			psEnc.indices.signalType = byte(SilkConstants.TYPE_VOICED)

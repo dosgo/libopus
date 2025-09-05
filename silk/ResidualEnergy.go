@@ -1,4 +1,6 @@
-package opus
+package silk
+
+import "github.com/dosgo/libopus/comm"
 
 func silk_residual_energy(
 	nrgs []int,
@@ -11,8 +13,8 @@ func silk_residual_energy(
 	LPC_order int,
 ) {
 	var offset, i, j, lz1, lz2 int
-	rshift := &BoxedValueInt{0}
-	energy := &BoxedValueInt{0}
+	rshift := &comm.BoxedValueInt{0}
+	energy := &comm.BoxedValueInt{0}
 	var LPC_res_ptr int
 	var LPC_res []int16
 	var x_ptr int
@@ -23,7 +25,7 @@ func silk_residual_energy(
 
 	/* Filter input to create the LPC residual for each frame half, and measure subframe energies */
 	LPC_res = make([]int16, (SilkConstants.MAX_NB_SUBFR>>1)*offset)
-	OpusAssert((nb_subfr>>1)*(SilkConstants.MAX_NB_SUBFR>>1) == nb_subfr)
+	inlines.OpusAssert((nb_subfr>>1)*(SilkConstants.MAX_NB_SUBFR>>1) == nb_subfr)
 	for i = 0; i < nb_subfr>>1; i++ {
 		/* Calculate half frame LPC residual signal including preceding samples */
 		silk_LPC_analysis_filter(LPC_res, 0, x, x_ptr, a_Q12[i], 0, (SilkConstants.MAX_NB_SUBFR>>1)*offset, LPC_order)
@@ -48,17 +50,17 @@ func silk_residual_energy(
 	/* Apply the squared subframe gains */
 	for i = 0; i < nb_subfr; i++ {
 		/* Fully upscale gains and energies */
-		lz1 = silk_CLZ32(nrgs[i]) - 1
-		lz2 = silk_CLZ32(gains[i]) - 1
+		lz1 = inlines.Silk_CLZ32(nrgs[i]) - 1
+		lz2 = inlines.Silk_CLZ32(gains[i]) - 1
 
-		tmp32 = silk_LSHIFT32(gains[i], lz2)
+		tmp32 = inlines.Silk_LSHIFT32(gains[i], lz2)
 
 		/* Find squared gains */
-		tmp32 = silk_SMMUL(tmp32, tmp32)
+		tmp32 = inlines.Silk_SMMUL(tmp32, tmp32)
 		/* Q( 2 * lz2 - 32 )*/
 
 		/* Scale energies */
-		nrgs[i] = silk_SMMUL(tmp32, silk_LSHIFT32(nrgs[i], lz1))
+		nrgs[i] = inlines.Silk_SMMUL(tmp32, inlines.Silk_LSHIFT32(nrgs[i], lz1))
 		/* Q( nrgsQ[ i ] + lz1 + 2 * lz2 - 32 - 32 )*/
 		nrgsQ[i] += lz1 + 2*lz2 - 32 - 32
 	}
@@ -75,59 +77,59 @@ func silk_residual_energy16_covar(
 	D int,
 	cQ int,
 ) int {
-	OpusAssert(D >= 0)
-	OpusAssert(D <= 16)
-	OpusAssert(cQ > 0)
-	OpusAssert(cQ < 16)
+	inlines.OpusAssert(D >= 0)
+	inlines.OpusAssert(D <= 16)
+	inlines.OpusAssert(cQ > 0)
+	inlines.OpusAssert(cQ < 16)
 
 	lshifts := 16 - cQ
 	Qxtra := lshifts
 	c_max := 0
 
 	for i := c_ptr; i < c_ptr+D; i++ {
-		abs_c := silk_abs(int(c[i]))
+		abs_c := inlines.Silk_abs(int(c[i]))
 		if abs_c > c_max {
 			c_max = abs_c
 		}
 	}
 
-	Qxtra = silk_min_int(Qxtra, silk_CLZ32(c_max)-17)
-	w_max := silk_max_32(wXX[wXX_ptr], wXX[wXX_ptr+(D*D)-1])
-	tmp_val := silk_RSHIFT(silk_SMULWB(w_max, c_max), 4)
-	Qxtra = silk_min_int(Qxtra, silk_CLZ32(D*tmp_val)-5)
-	Qxtra = silk_max_int(Qxtra, 0)
+	Qxtra = inlines.Silk_min_int(Qxtra, inlines.Silk_CLZ32(c_max)-17)
+	w_max := inlines.Silk_max_32(wXX[wXX_ptr], wXX[wXX_ptr+(D*D)-1])
+	tmp_val := inlines.Silk_RSHIFT(inlines.Silk_SMULWB(w_max, c_max), 4)
+	Qxtra = inlines.Silk_min_int(Qxtra, inlines.Silk_CLZ32(D*tmp_val)-5)
+	Qxtra = inlines.Silk_max_int(Qxtra, 0)
 
 	cn := make([]int, D)
 	for i := 0; i < D; i++ {
-		cn[i] = silk_LSHIFT(int(c[c_ptr+i]), Qxtra)
-		OpusAssert(silk_abs(cn[i]) <= (32768))
+		cn[i] = inlines.Silk_LSHIFT(int(c[c_ptr+i]), Qxtra)
+		inlines.OpusAssert(inlines.Silk_abs(cn[i]) <= (32768))
 	}
 	lshifts -= Qxtra
 
 	tmp := 0
 	for i := 0; i < D; i++ {
-		tmp = silk_SMLAWB(tmp, wXx[i], cn[i])
+		tmp = inlines.Silk_SMLAWB(tmp, wXx[i], cn[i])
 	}
-	nrg := silk_RSHIFT(wxx, 1+lshifts) - tmp
+	nrg := inlines.Silk_RSHIFT(wxx, 1+lshifts) - tmp
 
 	tmp2 := 0
 	for i := 0; i < D; i++ {
 		tmp = 0
 		pRow := wXX_ptr + i*D
 		for j := i + 1; j < D; j++ {
-			tmp = silk_SMLAWB(tmp, wXX[pRow+j], cn[j])
+			tmp = inlines.Silk_SMLAWB(tmp, wXX[pRow+j], cn[j])
 		}
-		tmp = silk_SMLAWB(tmp, silk_RSHIFT(wXX[pRow+i], 1), cn[i])
-		tmp2 = silk_SMLAWB(tmp2, tmp, cn[i])
+		tmp = inlines.Silk_SMLAWB(tmp, inlines.Silk_RSHIFT(wXX[pRow+i], 1), cn[i])
+		tmp2 = inlines.Silk_SMLAWB(tmp2, tmp, cn[i])
 	}
-	nrg = silk_ADD_LSHIFT32(nrg, tmp2, lshifts)
+	nrg = inlines.Silk_ADD_LSHIFT32(nrg, tmp2, lshifts)
 
 	if nrg < 1 {
 		nrg = 1
-	} else if nrg > silk_RSHIFT(2147483647, lshifts+2) {
+	} else if nrg > inlines.Silk_RSHIFT(2147483647, lshifts+2) {
 		nrg = 1073741824
 	} else {
-		nrg = silk_LSHIFT(nrg, lshifts+1)
+		nrg = inlines.Silk_LSHIFT(nrg, lshifts+1)
 	}
 	return nrg
 }

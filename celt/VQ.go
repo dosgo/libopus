@@ -2,6 +2,8 @@ package celt
 
 import (
 	"math"
+
+	"github.com/dosgo/libopus/comm"
 )
 
 var SPREAD_FACTOR = [3]int{15, 10, 5}
@@ -88,7 +90,7 @@ func extract_collapse_mask(iy []int, N int, B int) int {
 	return collapse_mask
 }
 
-func alg_quant(X []int, X_ptr int, N int, K int, spread int, B int, enc *EntropyCoder) int {
+func alg_quant(X []int, X_ptr int, N int, K int, spread int, B int, enc *comm.EntropyCoder) int {
 	y := make([]int, N)
 	iy := make([]int, N)
 	signx := make([]int, N)
@@ -207,7 +209,7 @@ func alg_quant(X []int, X_ptr int, N int, K int, spread int, B int, enc *Entropy
 	return collapse_mask
 }
 
-func alg_unquant(X []int, X_ptr int, N int, K int, spread int, B int, dec *EntropyCoder, gain int) int {
+func alg_unquant(X []int, X_ptr int, N int, K int, spread int, B int, dec *comm.EntropyCoder, gain int) int {
 	inlines.OpusAssertMsg(K > 0, "alg_unquant() needs at least one pulse")
 	inlines.OpusAssertMsg(N > 1, "alg_unquant() needs at least two dimensions")
 	iy := make([]int, N)

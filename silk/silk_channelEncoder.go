@@ -3,6 +3,7 @@ package silk
 import (
 	"math"
 
+	"github.com/dosgo/libopus/comm"
 	"github.com/dosgo/libopus/comm/arrayUtil"
 )
 
@@ -412,7 +413,7 @@ func (s *SilkChannelEncoder) silk_setup_complexity(Complexity int) int {
 	inlines.OpusAssert(Complexity >= 0 && Complexity <= 10)
 	if Complexity < 2 {
 		s.pitchEstimationComplexity = SilkConstants.SILK_PE_MIN_COMPLEX
-		//s.pitchEstimationThreshold_Q16 = Silk_SMULWB(0.8, 1<<16)
+		//s.pitchEstimationThreshold_Q16 = inlines.Silk_SMULWB(0.8, 1<<16)
 		s.pitchEstimationThreshold_Q16 = int(math.Trunc(0.8*(1<<(16)) + 0.5)) /*Inlines.SILK_CONST(0.8f, 16)*/
 
 		s.pitchEstimationLPCOrder = 6
@@ -425,7 +426,7 @@ func (s *SilkChannelEncoder) silk_setup_complexity(Complexity int) int {
 		s.warping_Q16 = 0
 	} else if Complexity < 4 {
 		s.pitchEstimationComplexity = SilkConstants.SILK_PE_MID_COMPLEX
-		//s.pitchEstimationThreshold_Q16 = silk_SMULWB(0.76, 1<<16)
+		//s.pitchEstimationThreshold_Q16 = inlines.Silk_SMULWB(0.76, 1<<16)
 		s.pitchEstimationThreshold_Q16 = int(math.Trunc(0.76*(1<<(16)) + 0.5)) /*Inlines.SILK_CONST(0.76f, 16)*/
 
 		s.pitchEstimationLPCOrder = 8
@@ -438,7 +439,7 @@ func (s *SilkChannelEncoder) silk_setup_complexity(Complexity int) int {
 		s.warping_Q16 = 0
 	} else if Complexity < 6 {
 		s.pitchEstimationComplexity = SilkConstants.SILK_PE_MID_COMPLEX
-		//s.pitchEstimationThreshold_Q16 = silk_SMULWB(0.74, 1<<16)
+		//s.pitchEstimationThreshold_Q16 = inlines.Silk_SMULWB(0.74, 1<<16)
 		s.pitchEstimationThreshold_Q16 = int(math.Trunc(0.74*(1<<(16)) + 0.5)) /*Inlines.SILK_CONST(0.74f, 16)*/
 
 		s.pitchEstimationLPCOrder = 10
@@ -448,11 +449,11 @@ func (s *SilkChannelEncoder) silk_setup_complexity(Complexity int) int {
 		s.useInterpolatedNLSFs = 1
 		s.LTPQuantLowComplexity = 0
 		s.NLSF_MSVQ_Survivors = 8
-		//s.warping_Q16 = s.fs_kHz * silk_SMULWB(TuningParameters.WARPING_MULTIPLIER, 1<<16)
+		//s.warping_Q16 = s.fs_kHz * inlines.Silk_SMULWB(TuningParameters.WARPING_MULTIPLIER, 1<<16)
 		s.warping_Q16 = s.fs_kHz * int((TuningParameters.WARPING_MULTIPLIER)*(1<<(16))+0.5)
 	} else if Complexity < 8 {
 		s.pitchEstimationComplexity = SilkConstants.SILK_PE_MID_COMPLEX
-		//s.pitchEstimationThreshold_Q16 = silk_SMULWB(0.72, 1<<16)
+		//s.pitchEstimationThreshold_Q16 = inlines.Silk_SMULWB(0.72, 1<<16)
 		s.pitchEstimationThreshold_Q16 = int(math.Trunc((0.72)*(1<<(16)) + 0.5)) /*Inlines.SILK_CONST(0.72f, 16)*/
 		s.pitchEstimationLPCOrder = 12
 		s.shapingLPCOrder = 14
@@ -461,11 +462,11 @@ func (s *SilkChannelEncoder) silk_setup_complexity(Complexity int) int {
 		s.useInterpolatedNLSFs = 1
 		s.LTPQuantLowComplexity = 0
 		s.NLSF_MSVQ_Survivors = 16
-		//s.warping_Q16 = s.fs_kHz * silk_SMULWB(TuningParameters.WARPING_MULTIPLIER, 1<<16)
+		//s.warping_Q16 = s.fs_kHz * inlines.Silk_SMULWB(TuningParameters.WARPING_MULTIPLIER, 1<<16)
 		s.warping_Q16 = s.fs_kHz * (int((TuningParameters.WARPING_MULTIPLIER)*(1<<(16)) + 0.5))
 	} else {
 		s.pitchEstimationComplexity = SilkConstants.SILK_PE_MAX_COMPLEX
-		//s.pitchEstimationThreshold_Q16 = silk_SMULWB(0.7, 1<<16)
+		//s.pitchEstimationThreshold_Q16 = inlines.Silk_SMULWB(0.7, 1<<16)
 		s.pitchEstimationThreshold_Q16 = int(math.Trunc(0.7*(1<<(16)) + 0.5))
 
 		s.pitchEstimationLPCOrder = 16
@@ -475,7 +476,7 @@ func (s *SilkChannelEncoder) silk_setup_complexity(Complexity int) int {
 		s.useInterpolatedNLSFs = 1
 		s.LTPQuantLowComplexity = 0
 		s.NLSF_MSVQ_Survivors = 32
-		//s.warping_Q16 = s.fs_kHz * silk_SMULWB(TuningParameters.WARPING_MULTIPLIER, 1<<16)
+		//s.warping_Q16 = s.fs_kHz * inlines.Silk_SMULWB(TuningParameters.WARPING_MULTIPLIER, 1<<16)
 		s.warping_Q16 = s.fs_kHz * int(((TuningParameters.WARPING_MULTIPLIER)*(1<<(16)) + 0.5))
 
 	}
@@ -504,15 +505,15 @@ func (s *SilkChannelEncoder) silk_setup_LBRR(TargetRate_bps int) int {
 		} else {
 			LBRR_rate_thres_bps = SilkConstants.LBRR_WB_MIN_RATE_BPS
 		}
-		//	LBRR_rate_thres_bps = silk_SMULWB(silk_MUL(LBRR_rate_thres_bps, 125-silk_min(s.PacketLoss_perc, 25)), silk_SMULWB(0.01, 1<<16))
+		//	LBRR_rate_thres_bps = inlines.Silk_SMULWB(inlines.Silk_MUL(LBRR_rate_thres_bps, 125-inlines.Silk_min(s.PacketLoss_perc, 25)), inlines.Silk_SMULWB(0.01, 1<<16))
 
-		LBRR_rate_thres_bps = inlines.Silk_SMULWB(silk_MUL(LBRR_rate_thres_bps, 125-silk_min(s.PacketLoss_perc, 25)), int(math.Trunc(0.01*(1<<(16))+0.5)))
+		LBRR_rate_thres_bps = inlines.Silk_SMULWB(inlines.Silk_MUL(LBRR_rate_thres_bps, 125-inlines.Silk_min(s.PacketLoss_perc, 25)), int(math.Trunc(0.01*(1<<(16))+0.5)))
 
 		if TargetRate_bps > LBRR_rate_thres_bps {
 			if LBRR_in_previous_packet == 0 {
 				s.LBRR_GainIncreases = 7
 			} else {
-				s.LBRR_GainIncreases = inlines.Silk_max_int(7-silk_SMULWB(s.PacketLoss_perc, int(math.Trunc((0.4)*(1<<(16))+0.5))), 2)
+				s.LBRR_GainIncreases = inlines.Silk_max_int(7-inlines.Silk_SMULWB(s.PacketLoss_perc, int(math.Trunc((0.4)*(1<<(16))+0.5))), 2)
 
 			}
 			s.LBRR_enabled = 1
@@ -525,13 +526,13 @@ func (s *SilkChannelEncoder) silk_control_audio_bandwidth(encControl *EncControl
 	fs_kHz := s.fs_kHz
 	fs_Hz := inlines.Silk_SMULBB(fs_kHz, 1000)
 	if fs_Hz == 0 {
-		fs_Hz = silk_min(s.desiredInternal_fs_Hz, s.API_fs_Hz)
-		fs_kHz = silk_DIV32_16(fs_Hz, 1000)
+		fs_Hz = inlines.Silk_min(s.desiredInternal_fs_Hz, s.API_fs_Hz)
+		fs_kHz = inlines.Silk_DIV32_16(fs_Hz, 1000)
 	} else if fs_Hz > s.API_fs_Hz || fs_Hz > s.maxInternal_fs_Hz || fs_Hz < s.minInternal_fs_Hz {
 		fs_Hz = s.API_fs_Hz
-		fs_Hz = silk_min(fs_Hz, s.maxInternal_fs_Hz)
-		fs_Hz = silk_max(fs_Hz, s.minInternal_fs_Hz)
-		fs_kHz = silk_DIV32_16(fs_Hz, 1000)
+		fs_Hz = inlines.Silk_min(fs_Hz, s.maxInternal_fs_Hz)
+		fs_Hz = inlines.Silk_max(fs_Hz, s.minInternal_fs_Hz)
+		fs_kHz = inlines.Silk_DIV32_16(fs_Hz, 1000)
 	} else {
 		if s.sLP.transition_frame_no >= SilkConstants.TRANSITION_FRAMES {
 			s.sLP.mode = 0
@@ -588,7 +589,7 @@ func (s *SilkChannelEncoder) silk_control_SNR(TargetRate_bps int) int {
 	ret := SilkError.SILK_NO_ERROR
 	var frac_Q6 int
 	var rateTable []int
-	TargetRate_bps = silk_LIMIT(TargetRate_bps, SilkConstants.MIN_TARGET_RATE_BPS, SilkConstants.MAX_TARGET_RATE_BPS)
+	TargetRate_bps = inlines.Silk_LIMIT(TargetRate_bps, SilkConstants.MIN_TARGET_RATE_BPS, SilkConstants.MAX_TARGET_RATE_BPS)
 	if TargetRate_bps != s.TargetRate_bps {
 		s.TargetRate_bps = TargetRate_bps
 		if s.fs_kHz == 8 {
@@ -603,8 +604,8 @@ func (s *SilkChannelEncoder) silk_control_SNR(TargetRate_bps int) int {
 		}
 		for k = 1; k < SilkConstants.TARGET_RATE_TAB_SZ; k++ {
 			if TargetRate_bps <= rateTable[k] {
-				frac_Q6 = silk_DIV32(silk_LSHIFT(TargetRate_bps-rateTable[k-1], 6), rateTable[k]-rateTable[k-1])
-				s.SNR_dB_Q7 = silk_LSHIFT(int(SilkTables.Silk_SNR_table_Q1[k-1]), 6) + silk_MUL(frac_Q6, int(SilkTables.Silk_SNR_table_Q1[k]-SilkTables.Silk_SNR_table_Q1[k-1]))
+				frac_Q6 = inlines.Silk_DIV32(inlines.Silk_LSHIFT(TargetRate_bps-rateTable[k-1], 6), rateTable[k]-rateTable[k-1])
+				s.SNR_dB_Q7 = inlines.Silk_LSHIFT(int(SilkTables.Silk_SNR_table_Q1[k-1]), 6) + inlines.Silk_MUL(frac_Q6, int(SilkTables.Silk_SNR_table_Q1[k]-SilkTables.Silk_SNR_table_Q1[k-1]))
 				break
 			}
 		}
@@ -636,13 +637,13 @@ func (s *SilkChannelEncoder) silk_encode_do_VAD() {
 	}
 }
 
-func (s *SilkChannelEncoder) silk_encode_frame(pnBytesOut *BoxedValueInt, psRangeEnc *EntropyCoder, condCoding int, maxBits int, useCBR int) int {
+func (s *SilkChannelEncoder) silk_encode_frame(pnBytesOut *comm.BoxedValueInt, psRangeEnc *comm.EntropyCoder, condCoding int, maxBits int, useCBR int) int {
 
 	sEncCtrl := NewSilkEncoderControl()
 	var iter, maxIter, found_upper, found_lower, ret int
 	var x_frame int
-	sRangeEnc_copy := &EntropyCoder{}
-	sRangeEnc_copy2 := &EntropyCoder{}
+	sRangeEnc_copy := &comm.EntropyCoder{}
+	sRangeEnc_copy2 := &comm.EntropyCoder{}
 	sNSQ_copy := &SilkNSQState{}
 	sNSQ_copy2 := &SilkNSQState{}
 	var nBits, nBits_lower, nBits_upper, gainMult_lower, gainMult_upper int
@@ -681,7 +682,7 @@ func (s *SilkChannelEncoder) silk_encode_frame(pnBytesOut *BoxedValueInt, psRang
 		s.silk_LBRR_encode(sEncCtrl, xfw_Q3, condCoding)
 
 		maxIter = 6
-		gainMult_Q8 = int16(silk_SMULWB(1, 1<<8))
+		gainMult_Q8 = int16(inlines.Silk_SMULWB(1, 1<<8))
 		found_lower = 0
 		found_upper = 0
 		gainsID = silk_gains_ID(s.indices.GainsIndices[:], s.nb_subfr)
@@ -719,7 +720,7 @@ func (s *SilkChannelEncoder) silk_encode_frame(pnBytesOut *BoxedValueInt, psRang
 
 				silk_encode_pulses(psRangeEnc, int(s.indices.signalType), int(s.indices.quantOffsetType), s.pulses, s.frame_length)
 
-				nBits = psRangeEnc.tell()
+				nBits = psRangeEnc.Tell()
 
 				if useCBR == 0 && iter == 0 && nBits <= maxBits {
 					break
@@ -728,8 +729,8 @@ func (s *SilkChannelEncoder) silk_encode_frame(pnBytesOut *BoxedValueInt, psRang
 			if iter == maxIter {
 				if found_lower != 0 && (gainsID == gainsID_lower || nBits > maxBits) {
 					psRangeEnc.Assign(sRangeEnc_copy2)
-					inlines.OpusAssert(sRangeEnc_copy2.offs <= 1275)
-					psRangeEnc.write_buffer(ec_buf_copy, 0, 0, sRangeEnc_copy2.offs)
+					inlines.OpusAssert(sRangeEnc_copy2.Offs <= 1275)
+					psRangeEnc.Write_buffer(ec_buf_copy, 0, 0, sRangeEnc_copy2.Offs)
 					s.sNSQ.Assign(sNSQ_copy2)
 					s.sShape.LastGainIndex = LastGainIndex_copy2
 				}
@@ -754,9 +755,9 @@ func (s *SilkChannelEncoder) silk_encode_frame(pnBytesOut *BoxedValueInt, psRang
 					gainsID_lower = gainsID
 					/* Copy part of the output state */
 					sRangeEnc_copy2.Assign(psRangeEnc)
-					inlines.OpusAssert(psRangeEnc.offs <= 1275)
+					inlines.OpusAssert(psRangeEnc.Offs <= 1275)
 
-					copy(ec_buf_copy, psRangeEnc.get_buffer()[:psRangeEnc.offs])
+					copy(ec_buf_copy, psRangeEnc.Get_buffer()[:psRangeEnc.Offs])
 					sNSQ_copy2.Assign(s.sNSQ)
 					LastGainIndex_copy2 = s.sShape.LastGainIndex
 				}
@@ -765,14 +766,14 @@ func (s *SilkChannelEncoder) silk_encode_frame(pnBytesOut *BoxedValueInt, psRang
 			}
 			if (found_lower & found_upper) == 0 {
 
-				gain_factor_Q16 := silk_log2lin(silk_LSHIFT(nBits-maxBits, 7)/s.frame_length + int(math.Trunc(16)*(1<<(7))+0.5))
-				gain_factor_Q16 = silk_min_32(gain_factor_Q16, int(math.Trunc((2)*(1<<(16))+0.5)))
+				gain_factor_Q16 := inlines.Silk_log2lin(inlines.Silk_LSHIFT(nBits-maxBits, 7)/s.frame_length + int(math.Trunc(16)*(1<<(7))+0.5))
+				gain_factor_Q16 = inlines.Silk_min_32(gain_factor_Q16, int(math.Trunc((2)*(1<<(16))+0.5)))
 				if nBits > maxBits {
-					gain_factor_Q16 = silk_max_32(gain_factor_Q16, int(math.Trunc(1.3)*(1<<(16))+0.5))
+					gain_factor_Q16 = inlines.Silk_max_32(gain_factor_Q16, int(math.Trunc(1.3)*(1<<(16))+0.5))
 				}
-				gainMult_Q8 = int16(silk_SMULWB(gain_factor_Q16, int(gainMult_Q8)))
+				gainMult_Q8 = int16(inlines.Silk_SMULWB(gain_factor_Q16, int(gainMult_Q8)))
 			} else {
-				gainMult_Q8 = int16(gainMult_lower + silk_DIV32_16(silk_MUL(gainMult_upper-gainMult_lower, maxBits-nBits_lower), nBits_upper-nBits_lower))
+				gainMult_Q8 = int16(gainMult_lower + inlines.Silk_DIV32_16(inlines.Silk_MUL(gainMult_upper-gainMult_lower, maxBits-nBits_lower), nBits_upper-nBits_lower))
 				if gainMult_Q8 > int16(gainMult_lower+(gainMult_upper-gainMult_lower)>>2) {
 					gainMult_Q8 = int16(gainMult_lower + (gainMult_upper-gainMult_lower)>>2)
 				} else if gainMult_Q8 < int16(gainMult_upper-(gainMult_upper-gainMult_lower)>>2) {
@@ -780,16 +781,16 @@ func (s *SilkChannelEncoder) silk_encode_frame(pnBytesOut *BoxedValueInt, psRang
 				}
 			}
 			for i := int(0); i < s.nb_subfr; i++ {
-				sEncCtrl.Gains_Q16[i] = inlines.Silk_LSHIFT_SAT32(silk_SMULWB(sEncCtrl.GainsUnq_Q16[i], int(gainMult_Q8)), 8)
+				sEncCtrl.Gains_Q16[i] = inlines.Silk_LSHIFT_SAT32(inlines.Silk_SMULWB(sEncCtrl.GainsUnq_Q16[i], int(gainMult_Q8)), 8)
 			}
 
 			s.sShape.LastGainIndex = sEncCtrl.lastGainIndexPrev
-			boxed_gainIndex := &BoxedValueByte{int8(s.sShape.LastGainIndex)}
+			boxed_gainIndex := &comm.BoxedValueByte{int8(s.sShape.LastGainIndex)}
 
 			silk_gains_quant(s.indices.GainsIndices, sEncCtrl.Gains_Q16,
-				boxed_gainIndex, boolToInt(condCoding == SilkConstants.CODE_CONDITIONALLY), s.nb_subfr)
+				boxed_gainIndex, comm.BoolToInt(condCoding == SilkConstants.CODE_CONDITIONALLY), s.nb_subfr)
 			s.sShape.LastGainIndex = int8(boxed_gainIndex.Val)
-			gainsID = inlines.Silk_gains_ID(s.indices.GainsIndices[:], s.nb_subfr)
+			gainsID = silk_gains_ID(s.indices.GainsIndices[:], s.nb_subfr)
 		}
 	}
 	copy(s.x_buf[:], s.x_buf[s.frame_length:])
@@ -800,7 +801,7 @@ func (s *SilkChannelEncoder) silk_encode_frame(pnBytesOut *BoxedValueInt, psRang
 	s.prevLag = sEncCtrl.pitchL[s.nb_subfr-1]
 	s.prevSignalType = s.indices.signalType
 	s.first_frame_after_reset = 0
-	pnBytesOut.Val = int(uint(psRangeEnc.tell()+7) >> 3)
+	pnBytesOut.Val = int(uint(psRangeEnc.Tell()+7) >> 3)
 
 	return ret
 }
@@ -809,20 +810,20 @@ func (s *SilkChannelEncoder) silk_LBRR_encode(thisCtrl *SilkEncoderControl, xfw_
 	sNSQ_LBRR := NewSilkNSQState()
 	psIndices_LBRR := s.indices_LBRR[s.nFramesEncoded]
 	TempGains_Q16 := make([]int, s.nb_subfr)
-	if s.LBRR_enabled != 0 && s.speech_activity_Q8 > silk_SMULWB(int(TuningParameters.LBRR_SPEECH_ACTIVITY_THRES), 1<<8) {
+	if s.LBRR_enabled != 0 && s.speech_activity_Q8 > inlines.Silk_SMULWB(int(TuningParameters.LBRR_SPEECH_ACTIVITY_THRES), 1<<8) {
 		s.LBRR_flags[s.nFramesEncoded] = 1
 
 		sNSQ_LBRR.Assign(s.sNSQ)
 		psIndices_LBRR.Assign(s.indices)
 		copy(TempGains_Q16, thisCtrl.Gains_Q16[:])
 		if s.nFramesEncoded == 0 || s.LBRR_flags[s.nFramesEncoded-1] == 0 {
-			psIndices_LBRR.GainsIndices[0] = int8(silk_min_int(int(psIndices_LBRR.GainsIndices[0])+s.LBRR_GainIncreases, SilkConstants.N_LEVELS_QGAIN-1))
+			psIndices_LBRR.GainsIndices[0] = int8(inlines.Silk_min_int(int(psIndices_LBRR.GainsIndices[0])+s.LBRR_GainIncreases, SilkConstants.N_LEVELS_QGAIN-1))
 
 		}
 
-		boxed_gainIndex := BoxedValueByte{int8(s.LBRRprevLastGainIndex)}
+		boxed_gainIndex := comm.BoxedValueByte{int8(s.LBRRprevLastGainIndex)}
 		silk_gains_dequant(thisCtrl.Gains_Q16, psIndices_LBRR.GainsIndices,
-			&boxed_gainIndex, boolToInt(condCoding == SilkConstants.CODE_CONDITIONALLY), s.nb_subfr)
+			&boxed_gainIndex, comm.BoolToInt(condCoding == SilkConstants.CODE_CONDITIONALLY), s.nb_subfr)
 		s.LBRRprevLastGainIndex = byte(boxed_gainIndex.Val)
 		if s.nStatesDelayedDecision > 1 || s.warping_Q16 > 0 {
 			sNSQ_LBRR.silk_NSQ_del_dec(s, psIndices_LBRR, xfw_Q3, s.pulses_LBRR[s.nFramesEncoded], thisCtrl.PredCoef_Q12[:], thisCtrl.LTPCoef_Q14[:], thisCtrl.AR2_Q13[:], thisCtrl.HarmShapeGain_Q14, thisCtrl.Tilt_Q14, thisCtrl.LF_shp_Q14, thisCtrl.Gains_Q16[:], thisCtrl.pitchL[:], thisCtrl.Lambda_Q10, thisCtrl.LTP_scale_Q14)

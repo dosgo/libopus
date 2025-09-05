@@ -1,7 +1,9 @@
 package silk
 
+import "github.com/dosgo/libopus/comm"
+
 func silk_decode_pulses(
-	psRangeDec *EntropyCoder,
+	psRangeDec *comm.EntropyCoder,
 	pulses []int16,
 	signalType int,
 	quantOffsetType int,
@@ -12,7 +14,7 @@ func silk_decode_pulses(
 	var nLshifts [MAX_NB_SHELL_BLOCKS]int
 	var pulses_ptr int
 
-	RateLevelIndex = psRangeDec.dec_icdf(SilkTables.Silk_rate_levels_iCDF[signalType>>1], 8)
+	RateLevelIndex = psRangeDec.Dec_icdf(SilkTables.Silk_rate_levels_iCDF[signalType>>1], 8)
 
 	inlines.OpusAssert(1<<SilkConstants.LOG2_SHELL_CODEC_FRAME_LENGTH == SilkConstants.SHELL_CODEC_FRAME_LENGTH)
 	iter = frame_length >> SilkConstants.LOG2_SHELL_CODEC_FRAME_LENGTH
@@ -23,16 +25,16 @@ func silk_decode_pulses(
 
 	for i = 0; i < iter; i++ {
 		nLshifts[i] = 0
-		sum_pulses[i] = psRangeDec.dec_icdf(SilkTables.Silk_pulses_per_block_iCDF[RateLevelIndex], 8)
+		sum_pulses[i] = psRangeDec.Dec_icdf(SilkTables.Silk_pulses_per_block_iCDF[RateLevelIndex], 8)
 
 		for sum_pulses[i] == SilkConstants.SILK_MAX_PULSES+1 {
 			nLshifts[i]++
 			table := SilkTables.Silk_pulses_per_block_iCDF[SilkConstants.N_RATE_LEVELS-1]
 			if nLshifts[i] == 10 {
-				sum_pulses[i] = psRangeDec.dec_icdf_offset(table, 1, 8)
+				sum_pulses[i] = psRangeDec.Dec_icdf_offset(table, 1, 8)
 
 			} else {
-				sum_pulses[i] = psRangeDec.dec_icdf_offset(table, 0, 8)
+				sum_pulses[i] = psRangeDec.Dec_icdf_offset(table, 0, 8)
 			}
 		}
 	}
@@ -57,7 +59,7 @@ func silk_decode_pulses(
 				abs_q = int(pulses[pulses_ptr+k])
 				for j = 0; j < nLS; j++ {
 					abs_q <<= 1
-					abs_q += psRangeDec.dec_icdf(SilkTables.Silk_lsb_iCDF, 8)
+					abs_q += psRangeDec.Dec_icdf(SilkTables.Silk_lsb_iCDF, 8)
 				}
 				pulses[pulses_ptr+k] = int16(abs_q)
 			}

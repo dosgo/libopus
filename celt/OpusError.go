@@ -1,6 +1,9 @@
 /*
-Copyright (c) 2006-2011 Skype Limited. All Rights Reserved
+Copyright (c) 2007-2008 CSIRO
 
+	Copyright (c) 2007-2011 Xiph.Org Foundation
+	Originally written by Jean-Marc Valin, Gregory Maxwell, Koen Vos,
+	Timothy B. Terriberry, and the Opus open-source contributors
 	Ported to Java by Logan Stromberg
 
 	Redistribution and use in source and binary forms, with or without
@@ -31,48 +34,27 @@ Copyright (c) 2006-2011 Skype Limited. All Rights Reserved
 	NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 	SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-package opus
+package celt
 
-///
-/// <summary>
-/// Struct for Packet Loss Concealment
-/// </summary>
-///
-type PLCStruct struct {
-	pitchL_Q8         int
-	LTPCoef_Q14       []int16
-	prevLPC_Q12       []int16
-	last_frame_lost   int
-	rand_seed         int
-	randScale_Q14     int16
-	conc_energy       int
-	conc_energy_shift int
-	prevLTP_scale_Q14 int16
-	prevGain_Q16      []int
-	fs_kHz            int
-	nb_subfr          int
-	subfr_length      int
-}
+/// Note that since most API-level errors are detected and thrown as
+/// OpusExceptions, direct use of this class is not usually needed
 
-func NewPLCStruct() *PLCStruct {
-	obj := &PLCStruct{}
-	obj.LTPCoef_Q14 = make([]int16, SilkConstants.LTP_ORDER)
-	obj.prevLPC_Q12 = make([]int16, SilkConstants.MAX_LPC_ORDER)
-	obj.prevGain_Q16 = make([]int, 2)
-	return obj
-}
-func (p *PLCStruct) Reset() {
-	p.pitchL_Q8 = 0
-	MemSetLen(p.LTPCoef_Q14, 0, SilkConstants.LTP_ORDER)
-	MemSetLen(p.prevLPC_Q12, 0, SilkConstants.MAX_LPC_ORDER)
-	p.last_frame_lost = 0
-	p.rand_seed = 0
-	p.randScale_Q14 = 0
-	p.conc_energy = 0
-	p.conc_energy_shift = 0
-	p.prevLTP_scale_Q14 = 0
-	MemSetLen(p.prevGain_Q16, 0, 2)
-	p.fs_kHz = 0
-	p.nb_subfr = 0
-	p.subfr_length = 0
+var OpusError = struct {
+	OPUS_OK               int
+	OPUS_BAD_ARG          int
+	OPUS_BUFFER_TOO_SMALL int
+	OPUS_INTERNAL_ERROR   int
+	OPUS_INVALID_PACKET   int
+	OPUS_UNIMPLEMENTED    int
+	OPUS_INVALID_STATE    int
+	OPUS_ALLOC_FAIL       int
+}{
+	OPUS_OK:               0,
+	OPUS_BAD_ARG:          -1,
+	OPUS_BUFFER_TOO_SMALL: -2,
+	OPUS_INTERNAL_ERROR:   -3,
+	OPUS_INVALID_PACKET:   -4,
+	OPUS_UNIMPLEMENTED:    -5,
+	OPUS_INVALID_STATE:    -6,
+	OPUS_ALLOC_FAIL:       -7,
 }

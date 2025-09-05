@@ -1,5 +1,7 @@
 package silk
 
+import "github.com/dosgo/libopus/comm"
+
 func combine_pulsesLen(output, input []int, input_ptr int, len int) {
 	var k int
 	for k = 0; k < len; k++ {
@@ -14,13 +16,13 @@ func combine_pulses(output, input []int, len int) {
 }
 
 func encode_split(
-	psRangeEnc *EntropyCoder,
+	psRangeEnc *comm.EntropyCoder,
 	p_child1 int,
 	p int,
 	shell_table []int16,
 ) {
 	if p > 0 {
-		psRangeEnc.enc_icdf_offset(p_child1, shell_table, int(SilkTables.Silk_shell_code_table_offsets[p]), 8)
+		psRangeEnc.Enc_icdf_offset(p_child1, shell_table, int(SilkTables.Silk_shell_code_table_offsets[p]), 8)
 	}
 }
 
@@ -29,12 +31,12 @@ func decode_split(
 	child1_ptr int,
 	p_child2 []int16,
 	p_child2_ptr int,
-	psRangeDec *EntropyCoder,
+	psRangeDec *comm.EntropyCoder,
 	p int,
 	shell_table []int16,
 ) {
 	if p > 0 {
-		p_child1[child1_ptr] = int16(psRangeDec.dec_icdf_offset(shell_table, int(SilkTables.Silk_shell_code_table_offsets[p]), 8))
+		p_child1[child1_ptr] = int16(psRangeDec.Dec_icdf_offset(shell_table, int(SilkTables.Silk_shell_code_table_offsets[p]), 8))
 		p_child2[p_child2_ptr] = int16(p) - p_child1[child1_ptr]
 	} else {
 		p_child1[child1_ptr] = 0
@@ -42,7 +44,7 @@ func decode_split(
 	}
 }
 
-func silk_shell_encoder(psRangeEnc *EntropyCoder, pulses0 []int, pulses0_ptr int) {
+func silk_shell_encoder(psRangeEnc *comm.EntropyCoder, pulses0 []int, pulses0_ptr int) {
 	pulses1 := make([]int, 8)
 	pulses2 := make([]int, 4)
 	pulses3 := make([]int, 2)
@@ -83,7 +85,7 @@ func silk_shell_encoder(psRangeEnc *EntropyCoder, pulses0 []int, pulses0_ptr int
 func silk_shell_decoder(
 	pulses0 []int16,
 	pulses0_ptr int,
-	psRangeDec *EntropyCoder,
+	psRangeDec *comm.EntropyCoder,
 	pulses4 int,
 ) {
 	pulses1 := make([]int16, 8)

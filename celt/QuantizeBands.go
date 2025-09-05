@@ -23,7 +23,7 @@ func loss_distortion(eBands [][]int, oldEBands [][]int, start int, end int, len 
 	return 200
 }
 
-func quant_coarse_energy_impl(m *CeltMode, start int, end int, eBands [][]int, oldEBands [][]int, budget int, tell int, prob_model []int16, error [][]int, enc *EntropyCoder, C int, LM int, intra int, max_decay int, lfe int) int {
+func quant_coarse_energy_impl(m *CeltMode, start int, end int, eBands [][]int, oldEBands [][]int, budget int, tell int, prob_model []int16, error [][]int, enc *comm.EntropyCoder, C int, LM int, intra int, max_decay int, lfe int) int {
 	var i, c int
 	badness := 0
 	prev := [2]int{0, 0}
@@ -31,7 +31,7 @@ func quant_coarse_energy_impl(m *CeltMode, start int, end int, eBands [][]int, o
 	var beta int
 
 	if tell+3 <= budget {
-		enc.enc_bit_logp(intra, 3)
+		enc.Enc_bit_logp(intra, 3)
 	}
 
 	if intra != 0 {
@@ -65,7 +65,7 @@ func quant_coarse_energy_impl(m *CeltMode, start int, end int, eBands [][]int, o
 				}
 			}
 			qi0 = qi
-			tell = enc.tell()
+			tell = enc.Tell()
 			bits_left = budget - tell - 3*C*(end-i)
 			if i != start && bits_left < 30 {
 				if bits_left < 24 {
@@ -90,10 +90,10 @@ func quant_coarse_energy_impl(m *CeltMode, start int, end int, eBands [][]int, o
 				if qi < 0 {
 					sign = 1
 				}
-				enc.enc_icdf((2*qi)^(-sign), small_energy_icdf, 2)
+				enc.Enc_icdf((2*qi)^(-sign), small_energy_icdf, 2)
 			} else if budget-tell >= 1 {
 				qi = inlines.IMIN(0, qi)
-				enc.enc_bit_logp(-qi, 1)
+				enc.Enc_bit_logp(-qi, 1)
 			} else {
 				qi = -1
 			}
@@ -113,14 +113,14 @@ func quant_coarse_energy_impl(m *CeltMode, start int, end int, eBands [][]int, o
 	}
 	return badness
 }
-func quant_coarse_energy(m *CeltMode, start int, end int, effEnd int, eBands [][]int, oldEBands [][]int, budget int, error [][]int, enc *EntropyCoder, C int, LM int, nbAvailableBytes int, force_intra int, delayedIntra *comm.BoxedValueInt, two_pass int, loss_rate int, lfe int) {
+func quant_coarse_energy(m *CeltMode, start int, end int, effEnd int, eBands [][]int, oldEBands [][]int, budget int, error [][]int, enc *comm.EntropyCoder, C int, LM int, nbAvailableBytes int, force_intra int, delayedIntra *comm.BoxedValueInt, two_pass int, loss_rate int, lfe int) {
 
 	intra := comm.BoolToInt(force_intra != 0 || (two_pass == 0 && delayedIntra.Val > 2*C*(end-start) && nbAvailableBytes > (end-start)*C))
 
 	intra_bias := (budget * delayedIntra.Val * loss_rate) / (C * 512)
 	new_distortion := loss_distortion(eBands, oldEBands, start, effEnd, m.nbEBands, C)
 
-	tell := enc.tell()
+	tell := enc.Tell()
 	if tell+3 > budget {
 		two_pass = 0
 		intra = 0
@@ -135,7 +135,7 @@ func quant_coarse_energy(m *CeltMode, start int, end int, effEnd int, eBands [][
 	if lfe != 0 {
 		max_decay = 3 << CeltConstants.DB_SHIFT
 	}
-	enc_start_state := EntropyCoder{}
+	enc_start_state := comm.EntropyCoder{}
 	enc_start_state.Assign(enc)
 
 	oldEBands_intra := make([][]int, C)
@@ -153,27 +153,27 @@ func quant_coarse_energy(m *CeltMode, start int, end int, effEnd int, eBands [][
 
 	if intra == 0 {
 
-		enc_intra_state := EntropyCoder{}
+		enc_intra_state := comm.EntropyCoder{}
 		enc_intra_state.Assign(enc)
 
-		tell_intra := enc.tell_frac()
-		nstart_bytes := enc_start_state.range_bytes()
-		nintra_bytes := enc_intra_state.range_bytes()
+		tell_intra := enc.Tell_frac()
+		nstart_bytes := enc_start_state.Range_bytes()
+		nintra_bytes := enc_intra_state.Range_bytes()
 		intra_buf := nstart_bytes
 		save_bytes := nintra_bytes - nstart_bytes
 		var intra_bits []byte
 		if save_bytes > 0 {
 			intra_bits = make([]byte, save_bytes)
-			copy(intra_bits, enc_intra_state.get_buffer()[intra_buf:intra_buf+save_bytes])
+			copy(intra_bits, enc_intra_state.Get_buffer()[intra_buf:intra_buf+save_bytes])
 		}
 
 		enc.Assign(&enc_start_state)
 		badness2 := quant_coarse_energy_impl(m, start, end, eBands, oldEBands, budget, tell, CeltTables.E_prob_model[LM][0], error, enc, C, LM, 0, max_decay, lfe)
 
-		if two_pass != 0 && (badness1 < badness2 || (badness1 == badness2 && enc.tell_frac()+intra_bias > tell_intra)) {
+		if two_pass != 0 && (badness1 < badness2 || (badness1 == badness2 && enc.Tell_frac()+intra_bias > tell_intra)) {
 			enc.Assign(&enc_intra_state)
 			if save_bytes > 0 {
-				enc.write_buffer(intra_bits, 0, intra_buf, int(save_bytes))
+				enc.Write_buffer(intra_bits, 0, intra_buf, int(save_bytes))
 			}
 			for c := 0; c < C; c++ {
 				copy(oldEBands[c], oldEBands_intra[c])
@@ -196,7 +196,7 @@ func quant_coarse_energy(m *CeltMode, start int, end int, effEnd int, eBands [][
 	}
 }
 
-func quant_fine_energy(m *CeltMode, start int, end int, oldEBands [][]int, error [][]int, fine_quant []int, enc *EntropyCoder, C int) {
+func quant_fine_energy(m *CeltMode, start int, end int, oldEBands [][]int, error [][]int, fine_quant []int, enc *comm.EntropyCoder, C int) {
 	for i := start; i < end; i++ {
 		frac := 1 << fine_quant[i]
 		if fine_quant[i] <= 0 {
@@ -210,7 +210,7 @@ func quant_fine_energy(m *CeltMode, start int, end int, oldEBands [][]int, error
 			if q2 < 0 {
 				q2 = 0
 			}
-			enc.enc_bits(int64(q2), fine_quant[i])
+			enc.Enc_bits(int64(q2), fine_quant[i])
 			offset := ((q2 << CeltConstants.DB_SHIFT) + (1 << (CeltConstants.DB_SHIFT - 1))) >> fine_quant[i]
 			offset -= 1 << (CeltConstants.DB_SHIFT - 1)
 			oldEBands[c][i] += int(offset)
@@ -219,7 +219,7 @@ func quant_fine_energy(m *CeltMode, start int, end int, oldEBands [][]int, error
 	}
 }
 
-func quant_energy_finalise(m *CeltMode, start int, end int, oldEBands [][]int, error [][]int, fine_quant []int, fine_priority []int, bits_left int, enc *EntropyCoder, C int) {
+func quant_energy_finalise(m *CeltMode, start int, end int, oldEBands [][]int, error [][]int, fine_quant []int, fine_priority []int, bits_left int, enc *comm.EntropyCoder, C int) {
 	for prio := 0; prio < 2; prio++ {
 		for i := start; i < end && bits_left >= C; i++ {
 			if fine_quant[i] >= CeltConstants.MAX_FINE_BITS || fine_priority[i] != prio {
@@ -230,7 +230,7 @@ func quant_energy_finalise(m *CeltMode, start int, end int, oldEBands [][]int, e
 				if error[c][i] >= 0 {
 					q2 = 1
 				}
-				enc.enc_bits(int64(q2), 1)
+				enc.Enc_bits(int64(q2), 1)
 				offset := (q2<<CeltConstants.DB_SHIFT - (1 << (CeltConstants.DB_SHIFT - 1))) >> (fine_quant[i] + 1)
 				oldEBands[c][i] += int(offset)
 				bits_left--
@@ -239,7 +239,7 @@ func quant_energy_finalise(m *CeltMode, start int, end int, oldEBands [][]int, e
 	}
 }
 
-func unquant_coarse_energy(m *CeltMode, start int, end int, oldEBands []int, intra int, dec *EntropyCoder, C int, LM int) {
+func unquant_coarse_energy(m *CeltMode, start int, end int, oldEBands []int, intra int, dec *comm.EntropyCoder, C int, LM int) {
 	prob_model := e_prob_model[LM][intra]
 	var i, c int
 	var prev = []int{0, 0}
@@ -256,7 +256,7 @@ func unquant_coarse_energy(m *CeltMode, start int, end int, oldEBands []int, int
 		coef = pred_coef[LM]
 	}
 
-	budget = dec.storage * 8
+	budget = dec.Storage * 8
 
 	/* Decode at a fixed coarse resolution */
 	for i = start; i < end; i++ {
@@ -269,17 +269,17 @@ func unquant_coarse_energy(m *CeltMode, start int, end int, oldEBands []int, int
 			   test on C at function entry, but that isn't enough
 			   to make the static analyzer happy. */
 			inlines.OpusAssert(c < 2)
-			tell = dec.tell()
+			tell = dec.Tell()
 			if budget-tell >= 15 {
 				var pi int
 				pi = 2 * inlines.IMIN(i, 20)
 				qi = Laplace.ec_laplace_decode(dec,
 					int64(prob_model[pi])<<7, int(prob_model[pi+1])<<6)
 			} else if budget-tell >= 2 {
-				qi = dec.dec_icdf(small_energy_icdf, 2)
+				qi = dec.Dec_icdf(small_energy_icdf, 2)
 				qi = (qi >> 1) ^ -(qi & 1)
 			} else if budget-tell >= 1 {
-				qi = 0 - dec.dec_bit_logp(1)
+				qi = 0 - dec.Dec_bit_logp(1)
 			} else {
 				qi = -1
 			}
@@ -299,7 +299,7 @@ func unquant_coarse_energy(m *CeltMode, start int, end int, oldEBands []int, int
 	}
 }
 
-func unquant_fine_energy(m *CeltMode, start int, end int, oldEBands []int, fine_quant []int, dec *EntropyCoder, C int) {
+func unquant_fine_energy(m *CeltMode, start int, end int, oldEBands []int, fine_quant []int, dec *comm.EntropyCoder, C int) {
 	var i, c int
 	/* Decode finer resolution */
 	for i = start; i < end; i++ {
@@ -310,7 +310,7 @@ func unquant_fine_energy(m *CeltMode, start int, end int, oldEBands []int, fine_
 		for {
 			var q2 int
 			var offset int
-			q2 = dec.dec_bits(fine_quant[i])
+			q2 = dec.Dec_bits(fine_quant[i])
 			offset = inlines.SUB16Int((inlines.SHR32(inlines.SHL32(q2, CeltConstants.DB_SHIFT)+int(0.5+(.5)*float64(int(1)<<(CeltConstants.DB_SHIFT))), fine_quant[i])), int(0.5+(.5)*float64(int(1)<<(CeltConstants.DB_SHIFT))))
 			oldEBands[i+c*m.nbEBands] += offset
 			c++
@@ -322,14 +322,14 @@ func unquant_fine_energy(m *CeltMode, start int, end int, oldEBands []int, fine_
 	}
 }
 
-func unquant_energy_finalise(m *CeltMode, start int, end int, oldEBands []int, fine_quant []int, fine_priority []int, bits_left int, dec *EntropyCoder, C int) {
+func unquant_energy_finalise(m *CeltMode, start int, end int, oldEBands []int, fine_quant []int, fine_priority []int, bits_left int, dec *comm.EntropyCoder, C int) {
 	for prio := 0; prio < 2; prio++ {
 		for i := start; i < end && bits_left >= C; i++ {
 			if fine_quant[i] >= CeltConstants.MAX_FINE_BITS || fine_priority[i] != prio {
 				continue
 			}
 			for c := 0; c < C; c++ {
-				q2 := dec.dec_bits(1)
+				q2 := dec.Dec_bits(1)
 				offset := (q2<<CeltConstants.DB_SHIFT - (1 << (CeltConstants.DB_SHIFT - 1))) >> (fine_quant[i] + 1)
 				index := i + c*m.nbEBands
 				oldEBands[index] += (offset)

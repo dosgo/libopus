@@ -1,4 +1,6 @@
-package opus
+package silk
+
+import "github.com/dosgo/libopus/comm"
 
 func combine_and_check(pulses_comb []int, pulses_comb_ptr int, pulses_in []int, pulses_in_ptr int, max_pulses int, _len int) int {
 	for k := 0; k < _len; k++ {
@@ -27,7 +29,7 @@ func combine_and_check4(
 }
 
 func silk_encode_pulses(
-	psRangeEnc *EntropyCoder,
+	psRangeEnc *comm.EntropyCoder,
 	signalType int,
 	quantOffsetType int,
 	pulses []int8,
@@ -47,10 +49,10 @@ func silk_encode_pulses(
 		pulses_comb[idx] = 0
 	}
 
-	OpusAssert(1<<SilkConstants.LOG2_SHELL_CODEC_FRAME_LENGTH == SilkConstants.SHELL_CODEC_FRAME_LENGTH)
-	iter = int(silk_RSHIFT(int(frame_length), int(SilkConstants.LOG2_SHELL_CODEC_FRAME_LENGTH)))
+	inlines.OpusAssert(1<<SilkConstants.LOG2_SHELL_CODEC_FRAME_LENGTH == SilkConstants.SHELL_CODEC_FRAME_LENGTH)
+	iter = int(inlines.Silk_RSHIFT(int(frame_length), int(SilkConstants.LOG2_SHELL_CODEC_FRAME_LENGTH)))
 	if iter*SilkConstants.SHELL_CODEC_FRAME_LENGTH < frame_length {
-		OpusAssert(frame_length == 12*10)
+		inlines.OpusAssert(frame_length == 12*10)
 		iter++
 		for idx := frame_length; idx < frame_length+SilkConstants.SHELL_CODEC_FRAME_LENGTH; idx++ {
 			if idx < len(pulses) {
@@ -60,13 +62,13 @@ func silk_encode_pulses(
 	}
 
 	abs_pulses = make([]int, iter*SilkConstants.SHELL_CODEC_FRAME_LENGTH)
-	OpusAssert((SilkConstants.SHELL_CODEC_FRAME_LENGTH & 3) == 0)
+	inlines.OpusAssert((SilkConstants.SHELL_CODEC_FRAME_LENGTH & 3) == 0)
 	// unrolled loop
 	for i = 0; i < iter*SilkConstants.SHELL_CODEC_FRAME_LENGTH; i += 4 {
-		abs_pulses[i+0] = silk_abs(int(pulses[i+0]))
-		abs_pulses[i+1] = silk_abs(int(pulses[i+1]))
-		abs_pulses[i+2] = silk_abs(int(pulses[i+2]))
-		abs_pulses[i+3] = silk_abs(int(pulses[i+3]))
+		abs_pulses[i+0] = inlines.Silk_abs(int(pulses[i+0]))
+		abs_pulses[i+1] = inlines.Silk_abs(int(pulses[i+1]))
+		abs_pulses[i+2] = inlines.Silk_abs(int(pulses[i+2]))
+		abs_pulses[i+3] = inlines.Silk_abs(int(pulses[i+3]))
 	}
 
 	sum_pulses = make([]int, iter)
@@ -87,7 +89,7 @@ func silk_encode_pulses(
 			if scale_down != 0 {
 				nRshifts[i]++
 				for k = abs_pulses_ptr; k < abs_pulses_ptr+SilkConstants.SHELL_CODEC_FRAME_LENGTH; k++ {
-					abs_pulses[k] = int(silk_RSHIFT((abs_pulses[k]), 1))
+					abs_pulses[k] = int(inlines.Silk_RSHIFT((abs_pulses[k]), 1))
 				}
 			} else {
 				break
@@ -113,17 +115,17 @@ func silk_encode_pulses(
 		}
 	}
 
-	psRangeEnc.enc_icdf(RateLevelIndex, SilkTables.Silk_rate_levels_iCDF[signalType>>1], 8)
+	psRangeEnc.Enc_icdf(RateLevelIndex, SilkTables.Silk_rate_levels_iCDF[signalType>>1], 8)
 
 	for i = 0; i < iter; i++ {
 		if nRshifts[i] == 0 {
-			psRangeEnc.enc_icdf(sum_pulses[i], SilkTables.Silk_pulses_per_block_iCDF[RateLevelIndex], 8)
+			psRangeEnc.Enc_icdf(sum_pulses[i], SilkTables.Silk_pulses_per_block_iCDF[RateLevelIndex], 8)
 		} else {
-			psRangeEnc.enc_icdf(SilkConstants.SILK_MAX_PULSES+1, SilkTables.Silk_pulses_per_block_iCDF[RateLevelIndex], 8)
+			psRangeEnc.Enc_icdf(SilkConstants.SILK_MAX_PULSES+1, SilkTables.Silk_pulses_per_block_iCDF[RateLevelIndex], 8)
 			for k = 0; k < nRshifts[i]-1; k++ {
-				psRangeEnc.enc_icdf(SilkConstants.SILK_MAX_PULSES+1, SilkTables.Silk_pulses_per_block_iCDF[SilkConstants.N_RATE_LEVELS-1], 8)
+				psRangeEnc.Enc_icdf(SilkConstants.SILK_MAX_PULSES+1, SilkTables.Silk_pulses_per_block_iCDF[SilkConstants.N_RATE_LEVELS-1], 8)
 			}
-			psRangeEnc.enc_icdf(sum_pulses[i], SilkTables.Silk_pulses_per_block_iCDF[SilkConstants.N_RATE_LEVELS-1], 8)
+			psRangeEnc.Enc_icdf(sum_pulses[i], SilkTables.Silk_pulses_per_block_iCDF[SilkConstants.N_RATE_LEVELS-1], 8)
 		}
 	}
 
@@ -146,10 +148,10 @@ func silk_encode_pulses(
 				}
 				for j = nLS; j > 0; j-- {
 					bit = (abs_q >> j) & 1
-					psRangeEnc.enc_icdf(bit, SilkTables.Silk_lsb_iCDF, 8)
+					psRangeEnc.Enc_icdf(bit, SilkTables.Silk_lsb_iCDF, 8)
 				}
 				bit = abs_q & 1
-				psRangeEnc.enc_icdf(bit, SilkTables.Silk_lsb_iCDF, 8)
+				psRangeEnc.Enc_icdf(bit, SilkTables.Silk_lsb_iCDF, 8)
 			}
 		}
 	}

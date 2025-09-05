@@ -1,5 +1,7 @@
 package celt
 
+import "github.com/dosgo/libopus/comm"
+
 var CELT_PVQ_U_ROW = []int{
 	0, 176, 351, 525, 698, 870, 1041, 1131, 1178, 1207, 1226, 1240, 1248, 1254, 1257,
 }
@@ -33,9 +35,9 @@ func icwrs(_n int, _y []int) int64 {
 	return i
 }
 
-func encode_pulses(_y []int, _n, _k int, _enc *EntropyCoder) {
+func encode_pulses(_y []int, _n, _k int, _enc *comm.EntropyCoder) {
 	inlines.OpusAssert(_k > 0)
-	_enc.enc_uint(icwrs(_n, _y), CELT_PVQ_V(_n, _k))
+	_enc.Enc_uint(icwrs(_n, _y), CELT_PVQ_V(_n, _k))
 }
 
 func cwrsi(_n int, _k int, _i int64, _y []int) int {
@@ -141,6 +143,6 @@ func cwrsi(_n int, _k int, _i int64, _y []int) int {
 	return yy
 }
 
-func decode_pulses(_y []int, _n, _k int, _dec *EntropyCoder) int {
-	return cwrsi(_n, _k, _dec.dec_uint(CELT_PVQ_V(_n, _k)), _y)
+func decode_pulses(_y []int, _n, _k int, _dec *comm.EntropyCoder) int {
+	return cwrsi(_n, _k, _dec.Dec_uint(CELT_PVQ_V(_n, _k)), _y)
 }

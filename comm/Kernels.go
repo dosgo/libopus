@@ -2,6 +2,8 @@ package comm
 
 type Kernels struct{}
 
+var kernels = Kernels{}
+
 func (kernels *Kernels) Celt_fir(x []int16, x_ptr int, num []int16, y []int16, y_ptr int, N int, ord int, mem []int16) {
 	var i, j int
 	rnum := make([]int16, ord)

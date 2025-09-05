@@ -30,11 +30,11 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-package opus
+package silk
 
 func silk_regularize_correlations(XX []int, XX_ptr int, xx []int, xx_ptr int, noise int, D int) {
 	for i := 0; i < D; i++ {
-		MatrixSet(XX, XX_ptr, i, i, D, silk_ADD32(MatrixGetPtr(XX, XX_ptr, i, i, D), noise))
+		inlines.MatrixSet(XX, XX_ptr, i, i, D, inlines.Silk_ADD32(inlines.MatrixGetPtr(XX, XX_ptr, i, i, D), noise))
 	}
 	xx[xx_ptr] += noise
 }

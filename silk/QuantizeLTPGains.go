@@ -1,14 +1,16 @@
-package opus
+package silk
 
 import (
 	"math"
+
+	"github.com/dosgo/libopus/comm"
 )
 
 func silk_quant_LTP_gains(
 	B_Q14 []int16,
 	cbk_index []int8,
-	periodicity_index *BoxedValueByte,
-	sum_log_gain_Q7 *BoxedValueInt,
+	periodicity_index *comm.BoxedValueByte,
+	sum_log_gain_Q7 *comm.BoxedValueInt,
 	W_Q18 []int,
 	mu_Q9 int,
 	lowComplexity int,
@@ -50,12 +52,12 @@ func silk_quant_LTP_gains(
 		rate_dist_Q14 = 0
 		sum_log_gain_tmp_Q7 = sum_log_gain_Q7.Val
 		for j = 0; j < nb_subfr; j++ {
-			max_gain_Q7 = silk_log2lin((int(float64(TuningParameters.MAX_SUM_LOG_GAIN_DB/6.0)*float64(int64(1)<<(7))+0.5)-sum_log_gain_tmp_Q7)+
+			max_gain_Q7 = inlines.Silk_log2lin((int(float64(TuningParameters.MAX_SUM_LOG_GAIN_DB/6.0)*float64(int64(1)<<(7))+0.5)-sum_log_gain_tmp_Q7)+
 				int(math.Trunc(7*float64(int64(1)<<(7))+0.5))) - gain_safety
 
-			temp_idx_box := &BoxedValueByte{temp_idx[j]}
-			rate_dist_Q14_subfr_box := &BoxedValueInt{0}
-			gain_Q7_box := &BoxedValueInt{0}
+			temp_idx_box := &comm.BoxedValueByte{temp_idx[j]}
+			rate_dist_Q14_subfr_box := &comm.BoxedValueInt{0}
+			gain_Q7_box := &comm.BoxedValueInt{0}
 			silk_VQ_WMat_EC(
 				temp_idx_box,            /* O    index of best codebook vector                           */
 				rate_dist_Q14_subfr_box, /* O    best weighted quantization error + mu * rate            */
@@ -75,16 +77,16 @@ func silk_quant_LTP_gains(
 			gain_Q7 = gain_Q7_box.Val
 			temp_idx[j] = temp_idx_box.Val
 
-			rate_dist_Q14 = silk_ADD_POS_SAT32(rate_dist_Q14, rate_dist_Q14_subfr)
-			sum_log_gain_tmp_Q7 = silk_max(0, sum_log_gain_tmp_Q7+
-				silk_lin2log(gain_safety+gain_Q7)-(int(math.Trunc(7*float64(int64(1)<<(7))+0.5))))
+			rate_dist_Q14 = inlines.Silk_ADD_POS_SAT32(rate_dist_Q14, rate_dist_Q14_subfr)
+			sum_log_gain_tmp_Q7 = inlines.Silk_max(0, sum_log_gain_tmp_Q7+
+				inlines.Silk_lin2log(gain_safety+gain_Q7)-(int(math.Trunc(7*float64(int64(1)<<(7))+0.5))))
 
 			b_Q14_ptr += SilkConstants.LTP_ORDER
 			W_Q18_ptr += SilkConstants.LTP_ORDER * SilkConstants.LTP_ORDER
 		}
 
 		/* Avoid never finding a codebook */
-		rate_dist_Q14 = silk_min(math.MaxInt32-1, rate_dist_Q14)
+		rate_dist_Q14 = inlines.Silk_min(math.MaxInt32-1, rate_dist_Q14)
 
 		if rate_dist_Q14 < min_rate_dist_Q14 {
 			min_rate_dist_Q14 = rate_dist_Q14
@@ -104,7 +106,7 @@ func silk_quant_LTP_gains(
 
 	for j = 0; j < nb_subfr; j++ {
 		for k = 0; k < SilkConstants.LTP_ORDER; k++ {
-			B_Q14[j*SilkConstants.LTP_ORDER+k] = int16(silk_LSHIFT(int(cbk_ptr_Q7[cbk_index[j]][k]), 7))
+			B_Q14[j*SilkConstants.LTP_ORDER+k] = int16(inlines.Silk_LSHIFT(int(cbk_ptr_Q7[cbk_index[j]][k]), 7))
 		}
 	}
 

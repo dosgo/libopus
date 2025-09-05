@@ -1,4 +1,9 @@
-package opus
+package silk
+
+import (
+	"github.com/dosgo/libopus/comm"
+	"github.com/dosgo/libopus/comm/arrayUtil"
+)
 
 func silk_decode_parameters(
 	psDec *SilkChannelDecoder,
@@ -9,9 +14,9 @@ func silk_decode_parameters(
 	pNLSF0_Q15 := make([]int16, psDec.LPC_order)
 	var cbk_ptr_Q7 [][]int8
 
-	boxedLastGainIndex := BoxedValueByte{Val: psDec.LastGainIndex}
+	boxedLastGainIndex := comm.BoxedValueByte{Val: psDec.LastGainIndex}
 	silk_gains_dequant(psDecCtrl.Gains_Q16, psDec.indices.GainsIndices,
-		&boxedLastGainIndex, boolToInt(condCoding == SilkConstants.CODE_CONDITIONALLY), psDec.nb_subfr)
+		&boxedLastGainIndex, comm.BoolToInt(condCoding == SilkConstants.CODE_CONDITIONALLY), psDec.nb_subfr)
 	psDec.LastGainIndex = boxedLastGainIndex.Val
 
 	silk_NLSF_decode(pNLSF_Q15, psDec.indices.NLSFIndices, psDec.psNLSF_CB)
@@ -23,7 +28,7 @@ func silk_decode_parameters(
 
 	if psDec.indices.NLSFInterpCoef_Q2 < 4 {
 		for i := 0; i < psDec.LPC_order; i++ {
-			pNLSF0_Q15[i] = int16(int(psDec.prevNLSF_Q15[i]) + silk_RSHIFT(silk_MUL(int(psDec.indices.NLSFInterpCoef_Q2),
+			pNLSF0_Q15[i] = int16(int(psDec.prevNLSF_Q15[i]) + inlines.Silk_RSHIFT(inlines.Silk_MUL(int(psDec.indices.NLSFInterpCoef_Q2),
 				int(pNLSF_Q15[i]-psDec.prevNLSF_Q15[i])), 2))
 		}
 		silk_NLSF2A(psDecCtrl.PredCoef_Q12[0], pNLSF0_Q15, psDec.LPC_order)
@@ -45,15 +50,15 @@ func silk_decode_parameters(
 		for k := 0; k < psDec.nb_subfr; k++ {
 			Ix := psDec.indices.LTPIndex[k]
 			for i := 0; i < LTP_ORDER; i++ {
-				psDecCtrl.LTPCoef_Q14[k*LTP_ORDER+i] = int16(silk_LSHIFT(int(cbk_ptr_Q7[Ix][i]), 7))
+				psDecCtrl.LTPCoef_Q14[k*LTP_ORDER+i] = int16(inlines.Silk_LSHIFT(int(cbk_ptr_Q7[Ix][i]), 7))
 			}
 		}
 
 		Ix := psDec.indices.LTP_scaleIndex
 		psDecCtrl.LTP_scale_Q14 = int(silk_LTPScales_table_Q14[Ix])
 	} else {
-		MemSetLen(psDecCtrl.pitchL, 0, int(psDec.nb_subfr))
-		MemSetLen(psDecCtrl.LTPCoef_Q14, 0, SilkConstants.LTP_ORDER*psDec.nb_subfr)
+		arrayUtil.MemSetLen(psDecCtrl.pitchL, 0, int(psDec.nb_subfr))
+		arrayUtil.MemSetLen(psDecCtrl.LTPCoef_Q14, 0, SilkConstants.LTP_ORDER*psDec.nb_subfr)
 		psDec.indices.PERIndex = 0
 		psDecCtrl.LTP_scale_Q14 = 0
 	}

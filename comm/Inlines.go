@@ -529,7 +529,7 @@ func (inlines *Inlines) Celt_zlog2(x int) int {
 	return inlines.Celt_ilog2(x)
 }
 
-func (inlines *Inlines) celt_maxabs16(x []int, x_ptr, len int) int {
+func (inlines *Inlines) Celt_maxabs16(x []int, x_ptr, len int) int {
 	maxval := 0
 	minval := 0
 	for i := x_ptr; i < len+x_ptr; i++ {
@@ -1415,7 +1415,7 @@ func (inlines *Inlines) Silk_lin2log(inLin int) int {
 	return inlines.Silk_LSHIFT(31-lz.Val, 7) + inlines.Silk_SMLAWB(frac_Q7.Val, inlines.Silk_MUL(frac_Q7.Val, 128-frac_Q7.Val), 179)
 }
 
-func (inlines *Inlines) silk_log2lin(inLog_Q7 int) int {
+func (inlines *Inlines) Silk_log2lin(inLog_Q7 int) int {
 	if inLog_Q7 < 0 {
 		return 0
 	} else if inLog_Q7 >= 3967 {
@@ -1440,7 +1440,7 @@ func (inlines *Inlines) Silk_interpolate(xi, x0, x1 []int16, ifact_Q2, d int) {
 		xi[i] = int16(inlines.Silk_ADD_RSHIFT(int(x0[i]), inlines.Silk_SMULBB(int(x1[i]-x0[i]), ifact_Q2), 2))
 	}
 }
-func (inlines *Inlines) silk_inner_prod_aligned_scale(inVec1, inVec2 []int16, scale, len int) int {
+func (inlines *Inlines) Silk_inner_prod_aligned_scale(inVec1, inVec2 []int16, scale, len int) int {
 	var i int = 0
 	var sum int = 0
 	for i = 0; i < len; i++ {
@@ -1449,19 +1449,19 @@ func (inlines *Inlines) silk_inner_prod_aligned_scale(inVec1, inVec2 []int16, sc
 	return sum
 }
 
-func (inlines *Inlines) silk_scale_copy_vector16(data_out []int16, data_out_ptr int, data_in []int16, data_in_ptr int, gain_Q16, dataSize int) {
+func (inlines *Inlines) Silk_scale_copy_vector16(data_out []int16, data_out_ptr int, data_in []int16, data_in_ptr int, gain_Q16, dataSize int) {
 	for i := 0; i < dataSize; i++ {
 		data_out[data_out_ptr+i] = int16(inlines.Silk_SMULWB(gain_Q16, int(data_in[data_in_ptr+i])))
 	}
 }
 
-func (inlines *Inlines) silk_scale_vector32_Q26_lshift_18(data1 []int, data1_ptr int, gain_Q26, dataSize int) {
+func (inlines *Inlines) Silk_scale_vector32_Q26_lshift_18(data1 []int, data1_ptr int, gain_Q26, dataSize int) {
 	for i := data1_ptr; i < data1_ptr+dataSize; i++ {
 		data1[i] = int(inlines.Silk_RSHIFT64(inlines.Silk_SMULL(int(data1[i]), int(gain_Q26)), 8))
 	}
 }
 
-func (inlines *Inlines) silk_inner_prod(inVec1 []int16, inVec1_ptr int, inVec2 []int16, inVec2_ptr int, len int) int {
+func (inlines *Inlines) Silk_inner_prod(inVec1 []int16, inVec1_ptr int, inVec2 []int16, inVec2_ptr int, len int) int {
 	xy := 0
 	for i := 0; i < len; i++ {
 		xy = inlines.MAC16_16Int(xy, inVec1[inVec1_ptr+i], inVec2[inVec2_ptr+i])
@@ -1469,7 +1469,7 @@ func (inlines *Inlines) silk_inner_prod(inVec1 []int16, inVec1_ptr int, inVec2 [
 	return xy
 }
 
-func (inlines *Inlines) silk_inner_prod_self(inVec []int16, inVec_ptr int, len int) int {
+func (inlines *Inlines) Silk_inner_prod_self(inVec []int16, inVec_ptr int, len int) int {
 	xy := 0
 	for i := inVec_ptr; i < inVec_ptr+len; i++ {
 		xy = inlines.MAC16_16Int(xy, inVec[i], inVec[i])

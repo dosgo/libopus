@@ -37,8 +37,8 @@ func BurgModified_silk_burg_modified(res_nrg *comm.BoxedValueInt, res_nrg_Q *com
 	inlines.OpusAssert(subfr_length*nb_subfr <= MAX_FRAME_SIZE)
 
 	/* Compute autocorrelations, added over subframes */
-	C0_64 = silk_inner_prod16_aligned_64(x, x_ptr, x, x_ptr, subfr_length*nb_subfr)
-	lz = silk_CLZ64(C0_64)
+	C0_64 = inlines.Silk_inner_prod16_aligned_64(x, x_ptr, x, x_ptr, subfr_length*nb_subfr)
+	lz = inlines.Silk_CLZ64(C0_64)
 	rshifts = 32 + 1 + N_BITS_HEAD_ROOM - lz
 	if rshifts > MAX_RSHIFTS {
 		rshifts = MAX_RSHIFTS
@@ -71,7 +71,7 @@ func BurgModified_silk_burg_modified(res_nrg *comm.BoxedValueInt, res_nrg_Q *com
 			var i int
 			var d int
 			x_offset = x_ptr + s*subfr_length
-			pitch_xcorr1(x, x_offset, x, x_offset+1, xcorr, subfr_length-D, D)
+			comm.Pitch_xcorr1(x, x_offset, x, x_offset+1, xcorr, subfr_length-D, D)
 			for n = 1; n < D+1; n++ {
 				d = 0
 				for i = n + subfr_length - D; i < subfr_length; i++ {
@@ -176,12 +176,12 @@ func BurgModified_silk_burg_modified(res_nrg *comm.BoxedValueInt, res_nrg_Q *com
 		/* Q( -rshifts ) */
 		num = 0
 		/* Q( -rshifts ) */
-		nrg = silk_ADD32(CAb[0], CAf[0])
+		nrg = inlines.Silk_ADD32(CAb[0], CAf[0])
 		/* Q( 1-rshifts ) */
 		for k = 0; k < n; k++ {
 			Atmp_QA = Af_QA[k]
-			lz = silk_CLZ32(silk_abs(Atmp_QA)) - 1
-			lz = silk_min(32-QA25, lz)
+			lz = inlines.Silk_CLZ32(inlines.Silk_abs(Atmp_QA)) - 1
+			lz = inlines.Silk_min(32-QA25, lz)
 			Atmp1 = inlines.Silk_LSHIFT32(Atmp_QA, lz)
 			/* Q( QA + lz ) */
 
@@ -191,7 +191,7 @@ func BurgModified_silk_burg_modified(res_nrg *comm.BoxedValueInt, res_nrg_Q *com
 			/* Q( -rshifts ) */
 			num = inlines.Silk_ADD_LSHIFT32(num, inlines.Silk_SMMUL(CAb[n-k], Atmp1), 32-QA25-lz)
 			/* Q( -rshifts ) */
-			nrg = inlines.Silk_ADD_LSHIFT32(nrg, inlines.Silk_SMMUL(silk_ADD32(CAb[k+1], CAf[k+1]),
+			nrg = inlines.Silk_ADD_LSHIFT32(nrg, inlines.Silk_SMMUL(inlines.Silk_ADD32(CAb[k+1], CAf[k+1]),
 				Atmp1), 32-QA25-lz)
 			/* Q( 1-rshifts ) */
 		}
@@ -199,14 +199,14 @@ func BurgModified_silk_burg_modified(res_nrg *comm.BoxedValueInt, res_nrg_Q *com
 		/* Q( -rshifts ) */
 		CAb[n+1] = tmp2
 		/* Q( -rshifts ) */
-		num = silk_ADD32(num, tmp2)
+		num = inlines.Silk_ADD32(num, tmp2)
 		/* Q( -rshifts ) */
 		num = inlines.Silk_LSHIFT32(-num, 1)
 		/* Q( 1-rshifts ) */
 
 		/* Calculate the next order reflection (parcor) coefficient */
-		if silk_abs(num) < nrg {
-			rc_Q31 = silk_DIV32_varQ(num, nrg, 31)
+		if inlines.Silk_abs(num) < nrg {
+			rc_Q31 = inlines.Silk_DIV32_varQ(num, nrg, 31)
 		} else {
 			rc_Q31 = math.MinInt32
 			if num > 0 {
@@ -217,16 +217,16 @@ func BurgModified_silk_burg_modified(res_nrg *comm.BoxedValueInt, res_nrg_Q *com
 		/* Update inverse prediction gain */
 		tmp1 = int(int32(1)<<30) - inlines.Silk_SMMUL(rc_Q31, rc_Q31)
 
-		tmp1 = silk_LSHIFT(inlines.Silk_SMMUL(invGain_Q30, tmp1), 2)
+		tmp1 = inlines.Silk_LSHIFT(inlines.Silk_SMMUL(invGain_Q30, tmp1), 2)
 
 		if tmp1 <= minInvGain_Q30 {
 			/* Max prediction gain exceeded; set reflection coefficient such that max prediction gain is exactly hit */
-			tmp2 = int(int32(1)<<30) - silk_DIV32_varQ(minInvGain_Q30, invGain_Q30, 30)
+			tmp2 = int(int32(1)<<30) - inlines.Silk_DIV32_varQ(minInvGain_Q30, invGain_Q30, 30)
 			/* Q30 */
-			rc_Q31 = silk_SQRT_APPROX(tmp2)
+			rc_Q31 = inlines.Silk_SQRT_APPROX(tmp2)
 			/* Q15 */
 			/* Newton-Raphson iteration */
-			rc_Q31 = silk_RSHIFT32(rc_Q31+silk_DIV32(tmp2, rc_Q31), 1)
+			rc_Q31 = inlines.Silk_RSHIFT32(rc_Q31+inlines.Silk_DIV32(tmp2, rc_Q31), 1)
 			/* Q15 */
 			rc_Q31 = inlines.Silk_LSHIFT32(rc_Q31, 16)
 			/* Q31 */
@@ -278,18 +278,18 @@ func BurgModified_silk_burg_modified(res_nrg *comm.BoxedValueInt, res_nrg_Q *com
 	if reached_max_gain != 0 {
 		for k = 0; k < D; k++ {
 			/* Scale coefficients */
-			A_Q16[k] = -silk_RSHIFT_ROUND(Af_QA[k], QA25-16)
+			A_Q16[k] = -inlines.Silk_RSHIFT_ROUND(Af_QA[k], QA25-16)
 		}
 		/* Subtract energy of preceding samples from C0 */
 		if rshifts > 0 {
 			for s = 0; s < nb_subfr; s++ {
 				x_offset = x_ptr + s*subfr_length
-				C0 -= int(inlines.Silk_RSHIFT64(silk_inner_prod16_aligned_64(x, x_offset, x, x_offset, D), rshifts))
+				C0 -= int(inlines.Silk_RSHIFT64(inlines.Silk_inner_prod16_aligned_64(x, x_offset, x, x_offset, D), rshifts))
 			}
 		} else {
 			for s = 0; s < nb_subfr; s++ {
 				x_offset = x_ptr + s*subfr_length
-				C0 -= inlines.Silk_LSHIFT32(silk_inner_prod_self(x, x_offset, D), -rshifts)
+				C0 -= inlines.Silk_LSHIFT32(inlines.Silk_inner_prod_self(x, x_offset, D), -rshifts)
 			}
 		}
 		/* Approximate residual energy */
@@ -302,7 +302,7 @@ func BurgModified_silk_burg_modified(res_nrg *comm.BoxedValueInt, res_nrg_Q *com
 		tmp1 = int(int32(1) << 16)
 		/* Q16 */
 		for k = 0; k < D; k++ {
-			Atmp1 = silk_RSHIFT_ROUND(Af_QA[k], QA25-16)
+			Atmp1 = inlines.Silk_RSHIFT_ROUND(Af_QA[k], QA25-16)
 			/* Q16 */
 			nrg = inlines.Silk_SMLAWW(nrg, CAf[k+1], Atmp1)
 			/* Q( -rshifts ) */

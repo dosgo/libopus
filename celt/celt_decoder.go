@@ -2,6 +2,9 @@ package celt
 
 import (
 	"math"
+
+	"github.com/dosgo/libopus/comm"
+	"github.com/dosgo/libopus/comm/arrayUtil"
 )
 
 type CeltDecoder struct {
@@ -141,21 +144,21 @@ func (this *CeltDecoder) celt_decode_lost(N int, LM int) {
 	}
 	if noise_based != 0 {
 		end := this.end
-		effEnd := IMAX(this.start, IMIN(end, mode.effEBands))
+		effEnd := inlines.IMAX(this.start, inlines.IMIN(end, mode.effEBands))
 
 		X := make([][]int, C)
 		for c := range X {
 			X[c] = make([]int, N)
 		}
 
-		decay := QCONST16(0.5, CeltConstants.DB_SHIFT)
+		decay := inlines.QCONST16(0.5, CeltConstants.DB_SHIFT)
 		if this.loss_count == 0 {
-			decay = QCONST16(1.5, CeltConstants.DB_SHIFT)
+			decay = inlines.QCONST16(1.5, CeltConstants.DB_SHIFT)
 		}
 		for c := 0; c < C; c++ {
 			for i := this.start; i < end; i++ {
 				idx := c*nbEBands + i
-				this.oldEBands[idx] = MIN16Int(this.backgroundLogE[idx], this.oldEBands[idx]-int(decay))
+				this.oldEBands[idx] = inlines.MIN16Int(this.backgroundLogE[idx], this.oldEBands[idx]-int(decay))
 			}
 		}
 		seed := this.rng
@@ -174,7 +177,7 @@ func (this *CeltDecoder) celt_decode_lost(N int, LM int) {
 
 		for c := 0; c < C; c++ {
 			//copy(this.decode_mem[c][:CeltConstants.DECODE_BUFFER_SIZE-N+(overlap>>1)], this.decode_mem[c][N:])
-			MemMove(this.decode_mem[c], N, 0, CeltConstants.DECODE_BUFFER_SIZE-N+(overlap>>1))
+			arrayUtil.MemMove(this.decode_mem[c], N, 0, CeltConstants.DECODE_BUFFER_SIZE-N+(overlap>>1))
 		}
 
 		celt_synthesis(mode, X, out_syn, out_syn_ptrs, this.oldEBands, this.start, effEnd, C, C, 0, LM, this.downsample, 0)
@@ -200,10 +203,10 @@ func (this *CeltDecoder) celt_decode_lost(N int, LM int) {
 
 			if this.loss_count == 0 {
 				ac := make([]int, CeltConstants.LPC_ORDER+1)
-				_celt_autocorr_with_window(exc, ac, window, overlap, CeltConstants.LPC_ORDER, CeltConstants.MAX_PERIOD)
-				ac[0] += SHR32(ac[0], 13)
+				comm.Celt_autocorr_with_window(exc, ac, window, overlap, CeltConstants.LPC_ORDER, CeltConstants.MAX_PERIOD)
+				ac[0] += inlines.SHR32(ac[0], 13)
 				for i := 1; i <= CeltConstants.LPC_ORDER; i++ {
-					ac[i] -= MULT16_32_Q15Int(2*i*i, ac[i])
+					ac[i] -= inlines.MULT16_32_Q15Int(2*i*i, ac[i])
 				}
 				celt_lpc(this.lpc[c], ac, CeltConstants.LPC_ORDER)
 			}
@@ -213,23 +216,23 @@ func (this *CeltDecoder) celt_decode_lost(N int, LM int) {
 			for i := 0; i < CeltConstants.LPC_ORDER; i++ {
 				lpc_mem[i] = inlines.ROUND16Int(buf[CeltConstants.DECODE_BUFFER_SIZE-exc_length-1-i], CeltConstants.SIG_SHIFT)
 			}
-			celt_fir_int(exc, CeltConstants.MAX_PERIOD-exc_length, this.lpc[c], 0, exc, CeltConstants.MAX_PERIOD-exc_length, exc_length, CeltConstants.LPC_ORDER, lpc_mem)
+			kernels.Celt_fir_int(exc, CeltConstants.MAX_PERIOD-exc_length, this.lpc[c], 0, exc, CeltConstants.MAX_PERIOD-exc_length, exc_length, CeltConstants.LPC_ORDER, lpc_mem)
 
-			shift := IMAX(0, 2*celt_zlog2(celt_maxabs16(exc, CeltConstants.MAX_PERIOD-exc_length, exc_length))-20)
+			shift := inlines.IMAX(0, 2*inlines.Celt_zlog2(inlines.Celt_maxabs16(exc, CeltConstants.MAX_PERIOD-exc_length, exc_length))-20)
 			decay_length := exc_length >> 1
 			E1 := 1
 			E2 := 1
 			for i := 0; i < decay_length; i++ {
 				e := exc[CeltConstants.MAX_PERIOD-decay_length+i]
-				E1 += SHR32(MULT16_16(e, e), shift)
+				E1 += inlines.SHR32(inlines.MULT16_16(e, e), shift)
 				e = exc[CeltConstants.MAX_PERIOD-2*decay_length+i]
-				E2 += inlines.SHR32(MULT16_16(e, e), shift)
+				E2 += inlines.SHR32(inlines.MULT16_16(e, e), shift)
 			}
-			E1 = MIN32(E1, E2)
-			decay := celt_sqrt(frac_div32(SHR32(E1, 1), E2))
+			E1 = inlines.MIN32(E1, E2)
+			decay := inlines.Celt_sqrt(inlines.Frac_div32(inlines.SHR32(E1, 1), E2))
 
 			//copy(buf[:CeltConstants.DECODE_BUFFER_SIZE-N], buf[N:])
-			MemMove(buf, N, 0, CeltConstants.DECODE_BUFFER_SIZE-N)
+			arrayUtil.MemMove(buf, N, 0, CeltConstants.DECODE_BUFFER_SIZE-N)
 			extrapolation_offset := CeltConstants.MAX_PERIOD - pitch_index
 			extrapolation_len := N + overlap
 			attenuation := inlines.MULT16_16_Q15Int(fade, decay)
@@ -241,42 +244,42 @@ func (this *CeltDecoder) celt_decode_lost(N int, LM int) {
 					attenuation = inlines.MULT16_16_Q15Int(attenuation, decay)
 				}
 				val := inlines.MULT16_16_Q15Int(attenuation, exc[extrapolation_offset+j])
-				buf[CeltConstants.DECODE_BUFFER_SIZE-N+i] = SHL32(val, CeltConstants.SIG_SHIFT)
-				tmp := ROUND16Int(buf[CeltConstants.DECODE_BUFFER_SIZE-CeltConstants.MAX_PERIOD-N+extrapolation_offset+j], CeltConstants.SIG_SHIFT)
-				S1 += SHR32(MULT16_16(tmp, tmp), 8)
+				buf[CeltConstants.DECODE_BUFFER_SIZE-N+i] = inlines.SHL32(val, CeltConstants.SIG_SHIFT)
+				tmp := inlines.ROUND16Int(buf[CeltConstants.DECODE_BUFFER_SIZE-CeltConstants.MAX_PERIOD-N+extrapolation_offset+j], CeltConstants.SIG_SHIFT)
+				S1 += inlines.SHR32(inlines.MULT16_16(tmp, tmp), 8)
 				j++
 			}
 
 			lpc_mem = make([]int, CeltConstants.LPC_ORDER)
 			for i := 0; i < CeltConstants.LPC_ORDER; i++ {
-				lpc_mem[i] = ROUND16Int(buf[CeltConstants.DECODE_BUFFER_SIZE-N-1-i], CeltConstants.SIG_SHIFT)
+				lpc_mem[i] = inlines.ROUND16Int(buf[CeltConstants.DECODE_BUFFER_SIZE-N-1-i], CeltConstants.SIG_SHIFT)
 			}
 			celt_iir(buf, CeltConstants.DECODE_BUFFER_SIZE-N, this.lpc[c], buf, CeltConstants.DECODE_BUFFER_SIZE-N, extrapolation_len, CeltConstants.LPC_ORDER, lpc_mem)
 
 			S2 := 0
 			for i := 0; i < extrapolation_len; i++ {
-				tmp := ROUND16Int(buf[CeltConstants.DECODE_BUFFER_SIZE-N+i], CeltConstants.SIG_SHIFT)
-				S2 += SHR32(MULT16_16(tmp, tmp), 8)
+				tmp := inlines.ROUND16Int(buf[CeltConstants.DECODE_BUFFER_SIZE-N+i], CeltConstants.SIG_SHIFT)
+				S2 += inlines.SHR32(inlines.MULT16_16(tmp, tmp), 8)
 			}
-			if !(S1 > SHR32(S2, 2)) {
+			if !(S1 > inlines.SHR32(S2, 2)) {
 				for i := 0; i < extrapolation_len; i++ {
 					buf[CeltConstants.DECODE_BUFFER_SIZE-N+i] = 0
 				}
 			} else if S1 < S2 {
-				ratio := celt_sqrt(frac_div32(SHR32(S1, 1)+1, S2+1))
+				ratio := inlines.Celt_sqrt(inlines.Frac_div32(inlines.SHR32(S1, 1)+1, S2+1))
 				for i := 0; i < overlap; i++ {
-					tmp_g := CeltConstants.Q15ONE - MULT16_16_Q15Int(window[i], CeltConstants.Q15ONE-ratio)
-					buf[CeltConstants.DECODE_BUFFER_SIZE-N+i] = MULT16_32_Q15Int(tmp_g, buf[CeltConstants.DECODE_BUFFER_SIZE-N+i])
+					tmp_g := CeltConstants.Q15ONE - inlines.MULT16_16_Q15Int(window[i], CeltConstants.Q15ONE-ratio)
+					buf[CeltConstants.DECODE_BUFFER_SIZE-N+i] = inlines.MULT16_32_Q15Int(tmp_g, buf[CeltConstants.DECODE_BUFFER_SIZE-N+i])
 				}
 				for i := overlap; i < extrapolation_len; i++ {
-					buf[CeltConstants.DECODE_BUFFER_SIZE-N+i] = MULT16_32_Q15Int(ratio, buf[CeltConstants.DECODE_BUFFER_SIZE-N+i])
+					buf[CeltConstants.DECODE_BUFFER_SIZE-N+i] = inlines.MULT16_32_Q15Int(ratio, buf[CeltConstants.DECODE_BUFFER_SIZE-N+i])
 				}
 			}
 
 			comb_filter(etmp, 0, buf, CeltConstants.DECODE_BUFFER_SIZE, this.postfilter_period_old, this.postfilter_period, overlap, -this.postfilter_gain_old, -this.postfilter_gain, this.postfilter_tapset_old, this.postfilter_tapset, nil, 0)
 
 			for i := 0; i < overlap/2; i++ {
-				buf[CeltConstants.DECODE_BUFFER_SIZE+i] = MULT16_32_Q15Int(window[i], etmp[overlap-1-i]) + MULT16_32_Q15Int(window[overlap-i-1], etmp[i])
+				buf[CeltConstants.DECODE_BUFFER_SIZE+i] = inlines.MULT16_32_Q15Int(window[i], etmp[overlap-1-i]) + inlines.MULT16_32_Q15Int(window[overlap-i-1], etmp[i])
 			}
 		}
 	}
@@ -369,7 +372,7 @@ func (ed *CeltDecoder) celt_decode_with_ec(data []byte, data_ptr int, length int
 
 	if C == 1 {
 		for i = 0; i < nbEBands; i++ {
-			oldBandE[i] = MAX16Int(oldBandE[i], oldBandE[nbEBands+i])
+			oldBandE[i] = inlines.MAX16Int(oldBandE[i], oldBandE[nbEBands+i])
 		}
 	}
 
@@ -448,7 +451,7 @@ func (ed *CeltDecoder) celt_decode_with_ec(data []byte, data_ptr int, length int
 		dynalloc_loop_logp := dynalloc_logp
 		boost := 0
 		width = C * (int(eBands[i+1]) - int(eBands[i])) << LM
-		quanta = IMIN(width<<BITRES, IMAX(6<<BITRES, width))
+		quanta = inlines.IMIN(width<<BITRES, inlines.IMAX(6<<BITRES, width))
 		for tell+(dynalloc_loop_logp<<BITRES) < total_bits && boost < cap[i] {
 			flag := dec.dec_bit_logp(int64(dynalloc_loop_logp))
 			tell = dec.tell_frac()
@@ -461,7 +464,7 @@ func (ed *CeltDecoder) celt_decode_with_ec(data []byte, data_ptr int, length int
 		}
 		offsets[i] = boost
 		if boost > 0 {
-			dynalloc_logp = IMAX(2, dynalloc_logp-1)
+			dynalloc_logp = inlines.IMAX(2, dynalloc_logp-1)
 		}
 	}
 
@@ -482,9 +485,9 @@ func (ed *CeltDecoder) celt_decode_with_ec(data []byte, data_ptr int, length int
 	pulses = make([]int, nbEBands)
 	fine_priority = make([]int, nbEBands)
 
-	boxed_intensity := &BoxedValueInt{Val: intensity}
-	boxed_dual_stereo := &BoxedValueInt{Val: dual_stereo}
-	boxed_balance := &BoxedValueInt{Val: 0}
+	boxed_intensity := &comm.BoxedValueInt{Val: intensity}
+	boxed_dual_stereo := &comm.BoxedValueInt{Val: dual_stereo}
+	boxed_balance := &comm.BoxedValueInt{Val: 0}
 	codedBands = compute_allocation(mode, start, end, offsets, cap, alloc_trim, boxed_intensity, boxed_dual_stereo, bits, boxed_balance, pulses, fine_quant, fine_priority, C, LM, dec, 0, 0, 0)
 	intensity = boxed_intensity.Val
 	dual_stereo = boxed_dual_stereo.Val
@@ -494,7 +497,7 @@ func (ed *CeltDecoder) celt_decode_with_ec(data []byte, data_ptr int, length int
 	c = 0
 	for {
 		//	copy(ed.decode_mem[c][0:], ed.decode_mem[c][N:CeltConstants.DECODE_BUFFER_SIZE-N+overlap/2])
-		MemMove(ed.decode_mem[c], N, 0, CeltConstants.DECODE_BUFFER_SIZE-N+overlap/2)
+		arrayUtil.MemMove(ed.decode_mem[c], N, 0, CeltConstants.DECODE_BUFFER_SIZE-N+overlap/2)
 		c++
 		if !(c < CC) {
 			break
@@ -502,9 +505,9 @@ func (ed *CeltDecoder) celt_decode_with_ec(data []byte, data_ptr int, length int
 	}
 
 	collapse_masks = make([]int16, C*nbEBands)
-	X = InitTwoDimensionalArrayInt(C, N)
+	X = arrayUtil.InitTwoDimensionalArrayInt(C, N)
 
-	boxed_rng := &BoxedValueInt{Val: ed.rng}
+	boxed_rng := &comm.BoxedValueInt{Val: ed.rng}
 	var Y_ []int
 	if C == 2 {
 		Y_ = X[1]
@@ -535,8 +538,8 @@ func (ed *CeltDecoder) celt_decode_with_ec(data []byte, data_ptr int, length int
 	c = 0
 
 	for {
-		ed.postfilter_period = IMAX(ed.postfilter_period, CeltConstants.COMBFILTER_MINPERIOD)
-		ed.postfilter_period_old = IMAX(ed.postfilter_period_old, CeltConstants.COMBFILTER_MINPERIOD)
+		ed.postfilter_period = inlines.IMAX(ed.postfilter_period, CeltConstants.COMBFILTER_MINPERIOD)
+		ed.postfilter_period_old = inlines.IMAX(ed.postfilter_period_old, CeltConstants.COMBFILTER_MINPERIOD)
 		comb_filter(out_syn[c], out_syn_ptrs[c], out_syn[c], out_syn_ptrs[c], ed.postfilter_period_old, ed.postfilter_period, mode.shortMdctSize, ed.postfilter_gain_old, ed.postfilter_gain, ed.postfilter_tapset_old, ed.postfilter_tapset, mode.window, overlap)
 		if LM != 0 {
 			comb_filter(out_syn[c], out_syn_ptrs[c]+mode.shortMdctSize, out_syn[c], out_syn_ptrs[c]+mode.shortMdctSize, ed.postfilter_period, postfilter_pitch, N-mode.shortMdctSize, ed.postfilter_gain, postfilter_gain, ed.postfilter_tapset, postfilter_tapset, mode.window, overlap)
@@ -572,11 +575,11 @@ func (ed *CeltDecoder) celt_decode_with_ec(data []byte, data_ptr int, length int
 			max_background_increase = int(0.5 + 1.0*float64(int(1)<<CeltConstants.DB_SHIFT))
 		}
 		for i = 0; i < 2*nbEBands; i++ {
-			backgroundLogE[i] = MIN16Int(backgroundLogE[i]+max_background_increase, oldBandE[i])
+			backgroundLogE[i] = inlines.MIN16Int(backgroundLogE[i]+max_background_increase, oldBandE[i])
 		}
 	} else {
 		for i = 0; i < 2*nbEBands; i++ {
-			oldLogE[i] = MIN16Int(oldLogE[i], oldBandE[i])
+			oldLogE[i] = inlines.MIN16Int(oldLogE[i], oldBandE[i])
 		}
 	}
 	c = 0

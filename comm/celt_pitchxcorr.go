@@ -1,15 +1,13 @@
-package celt
+package comm
 
-import "github.com/dosgo/libopus/comm"
-
-func pitch_xcorr(_x []int, _y []int, xcorr []int, len int, max_pitch int) int {
+func Pitch_xcorr(_x []int, _y []int, xcorr []int, len int, max_pitch int) int {
 	var i int
 	maxcorr := int(1)
 	inlines.OpusAssert(max_pitch > 0)
-	sum0 := comm.BoxedValueInt{0}
-	sum1 := comm.BoxedValueInt{0}
-	sum2 := comm.BoxedValueInt{0}
-	sum3 := comm.BoxedValueInt{0}
+	sum0 := BoxedValueInt{0}
+	sum1 := BoxedValueInt{0}
+	sum2 := BoxedValueInt{0}
+	sum3 := BoxedValueInt{0}
 	for i = 0; i < max_pitch-3; i += 4 {
 		sum0.Val = 0
 		sum1.Val = 0
@@ -33,14 +31,14 @@ func pitch_xcorr(_x []int, _y []int, xcorr []int, len int, max_pitch int) int {
 	return maxcorr
 }
 
-func pitch_xcorr1(_x []int16, _x_ptr int, _y []int16, _y_ptr int, xcorr []int, len int, max_pitch int) int {
+func Pitch_xcorr1(_x []int16, _x_ptr int, _y []int16, _y_ptr int, xcorr []int, len int, max_pitch int) int {
 	var i int
 	var maxcorr = 1
 	inlines.OpusAssert(max_pitch > 0)
-	sum0 := &comm.BoxedValueInt{0}
-	sum1 := &comm.BoxedValueInt{0}
-	sum2 := &comm.BoxedValueInt{0}
-	sum3 := &comm.BoxedValueInt{0}
+	sum0 := &BoxedValueInt{0}
+	sum1 := &BoxedValueInt{0}
+	sum2 := &BoxedValueInt{0}
+	sum3 := &BoxedValueInt{0}
 	for i = 0; i < max_pitch-3; i += 4 {
 		sum0.Val = 0
 		sum1.Val = 0
@@ -71,10 +69,10 @@ func pitch_xcorr2(_x []int16, _y []int16, xcorr []int, len int, max_pitch int) i
 	var i int
 	var maxcorr int = 1
 	inlines.OpusAssert(max_pitch > 0)
-	sum0 := &comm.BoxedValueInt{0}
-	sum1 := &comm.BoxedValueInt{0}
-	sum2 := &comm.BoxedValueInt{0}
-	sum3 := &comm.BoxedValueInt{0}
+	sum0 := &BoxedValueInt{0}
+	sum1 := &BoxedValueInt{0}
+	sum2 := &BoxedValueInt{0}
+	sum3 := &BoxedValueInt{0}
 	for i = 0; i < max_pitch-3; i += 4 {
 		sum0.Val = 0
 		sum1.Val = 0

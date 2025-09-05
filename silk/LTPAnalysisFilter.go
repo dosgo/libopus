@@ -1,4 +1,4 @@
-package opus
+package silk
 
 func silk_LTP_analysis_filter(
 	LTP_res []int16,
@@ -33,20 +33,20 @@ func silk_LTP_analysis_filter(
 			LTP_res[LTP_res_ptri] = x[x_ptr2+i]
 
 			/* Long-term prediction */
-			LTP_est = silk_SMULBB(int(x[x_lag_ptr+SilkConstants.LTP_ORDER/2]), int(Btmp_Q14[0]))
-			LTP_est = int(silk_SMLABB_ovflw(int32(LTP_est), int32(x[x_lag_ptr+1]), int32(Btmp_Q14[1])))
-			LTP_est = int(silk_SMLABB_ovflw(int32(LTP_est), int32(x[x_lag_ptr]), int32(Btmp_Q14[2])))
-			LTP_est = int(silk_SMLABB_ovflw(int32(LTP_est), int32(x[x_lag_ptr-1]), int32(Btmp_Q14[3])))
-			LTP_est = int(silk_SMLABB_ovflw(int32(LTP_est), int32(x[x_lag_ptr-2]), int32(Btmp_Q14[4])))
+			LTP_est = inlines.Silk_SMULBB(int(x[x_lag_ptr+SilkConstants.LTP_ORDER/2]), int(Btmp_Q14[0]))
+			LTP_est = int(inlines.Silk_SMLABB_ovflw(int32(LTP_est), int32(x[x_lag_ptr+1]), int32(Btmp_Q14[1])))
+			LTP_est = int(inlines.Silk_SMLABB_ovflw(int32(LTP_est), int32(x[x_lag_ptr]), int32(Btmp_Q14[2])))
+			LTP_est = int(inlines.Silk_SMLABB_ovflw(int32(LTP_est), int32(x[x_lag_ptr-1]), int32(Btmp_Q14[3])))
+			LTP_est = int(inlines.Silk_SMLABB_ovflw(int32(LTP_est), int32(x[x_lag_ptr-2]), int32(Btmp_Q14[4])))
 
-			LTP_est = silk_RSHIFT_ROUND(LTP_est, 14)
+			LTP_est = inlines.Silk_RSHIFT_ROUND(LTP_est, 14)
 			/* round and . Q0*/
 
 			/* Subtract long-term prediction */
-			LTP_res[LTP_res_ptri] = int16(silk_SAT16(int(x[x_ptr2+i]) - LTP_est))
+			LTP_res[LTP_res_ptri] = int16(inlines.Silk_SAT16(int(x[x_ptr2+i]) - LTP_est))
 
 			/* Scale residual */
-			LTP_res[LTP_res_ptri] = int16(silk_SMULWB(invGains_Q16[k], int(LTP_res[LTP_res_ptri])))
+			LTP_res[LTP_res_ptri] = int16(inlines.Silk_SMULWB(invGains_Q16[k], int(LTP_res[LTP_res_ptri])))
 
 			x_lag_ptr++
 		}

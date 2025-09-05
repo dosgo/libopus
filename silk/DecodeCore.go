@@ -1,6 +1,10 @@
-package opus
+package silk
 
-import "math"
+import (
+	"math"
+
+	"github.com/dosgo/libopus/comm/arrayUtil"
+)
 
 func silk_decode_core(
 	psDec *SilkChannelDecoder,
@@ -24,7 +28,7 @@ func silk_decode_core(
 	var res_Q14 []int
 	var sLPC_Q14 []int
 
-	OpusAssert(psDec.prev_gain_Q16 != 0)
+	inlines.OpusAssert(psDec.prev_gain_Q16 != 0)
 
 	sLTP = make([]int16, psDec.ltp_mem_length)
 	sLTP_Q15 = make([]int, psDec.ltp_mem_length+psDec.frame_length)
@@ -42,8 +46,8 @@ func silk_decode_core(
 	/* Decode excitation */
 	rand_seed = int(psDec.indices.Seed)
 	for i = 0; i < psDec.frame_length; i++ {
-		rand_seed = silk_RAND(rand_seed)
-		psDec.exc_Q14[i] = silk_LSHIFT(int(pulses[i]), 14)
+		rand_seed = inlines.Silk_RAND(rand_seed)
+		psDec.exc_Q14[i] = inlines.Silk_LSHIFT(int(pulses[i]), 14)
 		if psDec.exc_Q14[i] > 0 {
 			psDec.exc_Q14[i] -= SilkConstants.QUANT_LEVEL_ADJUST_Q10 << 4
 		} else {
@@ -56,7 +60,7 @@ func silk_decode_core(
 			psDec.exc_Q14[i] = -psDec.exc_Q14[i]
 		}
 
-		rand_seed = int(silk_ADD32_ovflw(int32(rand_seed), int32(pulses[i])))
+		rand_seed = int(inlines.Silk_ADD32_ovflw(int32(rand_seed), int32(pulses[i])))
 	}
 
 	/* Copy LPC state */
@@ -73,30 +77,30 @@ func silk_decode_core(
 		B_Q14_ptr = k * SilkConstants.LTP_ORDER
 		signalType = int(psDec.indices.signalType)
 
-		Gain_Q10 = silk_RSHIFT(psDecCtrl.Gains_Q16[k], 6)
-		inv_gain_Q31 = silk_INVERSE32_varQ(psDecCtrl.Gains_Q16[k], 47)
+		Gain_Q10 = inlines.Silk_RSHIFT(psDecCtrl.Gains_Q16[k], 6)
+		inv_gain_Q31 = inlines.Silk_INVERSE32_varQ(psDecCtrl.Gains_Q16[k], 47)
 
 		/* Calculate gain adjustment factor */
 		if psDecCtrl.Gains_Q16[k] != psDec.prev_gain_Q16 {
-			gain_adj_Q16 = silk_DIV32_varQ(psDec.prev_gain_Q16, psDecCtrl.Gains_Q16[k], 16)
+			gain_adj_Q16 = inlines.Silk_DIV32_varQ(psDec.prev_gain_Q16, psDecCtrl.Gains_Q16[k], 16)
 
 			/* Scale short term state */
 			for i = 0; i < SilkConstants.MAX_LPC_ORDER; i++ {
-				sLPC_Q14[i] = silk_SMULWW(gain_adj_Q16, sLPC_Q14[i])
+				sLPC_Q14[i] = inlines.Silk_SMULWW(gain_adj_Q16, sLPC_Q14[i])
 			}
 		} else {
 			gain_adj_Q16 = 1 << 16
 		}
 
 		/* Save inv_gain */
-		OpusAssert(inv_gain_Q31 != 0)
+		inlines.OpusAssert(inv_gain_Q31 != 0)
 		psDec.prev_gain_Q16 = psDecCtrl.Gains_Q16[k]
 
 		/* Avoid abrupt transition from voiced PLC to unvoiced normal decoding */
 		if psDec.lossCnt != 0 && psDec.prevSignalType == SilkConstants.TYPE_VOICED &&
 			int(psDec.indices.signalType) != SilkConstants.TYPE_VOICED && k < SilkConstants.MAX_NB_SUBFR/2 {
 
-			MemSetWithOffset(B_Q14, 0, B_Q14_ptr, SilkConstants.LTP_ORDER)
+			arrayUtil.MemSetWithOffset(B_Q14, 0, B_Q14_ptr, SilkConstants.LTP_ORDER)
 			B_Q14[B_Q14_ptr+(SilkConstants.LTP_ORDER/2)] = int16(math.Trunc((0.25)*float64(int64(1)<<(14)) + 0.5))
 
 			signalType = SilkConstants.TYPE_VOICED
@@ -111,7 +115,7 @@ func silk_decode_core(
 			if k == 0 || (k == 2 && (NLSF_interpolation_flag != 0)) {
 				/* Rewhiten with new A coefs */
 				start_idx = psDec.ltp_mem_length - lag - psDec.LPC_order - SilkConstants.LTP_ORDER/2
-				OpusAssert(start_idx > 0)
+				inlines.OpusAssert(start_idx > 0)
 
 				if k == 2 {
 					//	System.arraycopy(xq, xq_ptr, psDec.outBuf, psDec.ltp_mem_length, 2*psDec.subfr_length)
@@ -124,14 +128,14 @@ func silk_decode_core(
 				/* After rewhitening the LTP state is unscaled */
 				if k == 0 {
 					/* Do LTP downscaling to reduce inter-packet dependency */
-					inv_gain_Q31 = silk_LSHIFT(silk_SMULWB(inv_gain_Q31, psDecCtrl.LTP_scale_Q14), 2)
+					inv_gain_Q31 = inlines.Silk_LSHIFT(inlines.Silk_SMULWB(inv_gain_Q31, psDecCtrl.LTP_scale_Q14), 2)
 				}
 				for i = 0; i < lag+SilkConstants.LTP_ORDER/2; i++ {
-					sLTP_Q15[sLTP_buf_idx-i-1] = silk_SMULWB(inv_gain_Q31, int(sLTP[psDec.ltp_mem_length-i-1]))
+					sLTP_Q15[sLTP_buf_idx-i-1] = inlines.Silk_SMULWB(inv_gain_Q31, int(sLTP[psDec.ltp_mem_length-i-1]))
 				}
 			} else /* Update LTP state when Gain changes */ if gain_adj_Q16 != int(int32(1)<<16) {
 				for i = 0; i < lag+SilkConstants.LTP_ORDER/2; i++ {
-					sLTP_Q15[sLTP_buf_idx-i-1] = silk_SMULWW(gain_adj_Q16, sLTP_Q15[sLTP_buf_idx-i-1])
+					sLTP_Q15[sLTP_buf_idx-i-1] = inlines.Silk_SMULWW(gain_adj_Q16, sLTP_Q15[sLTP_buf_idx-i-1])
 				}
 			}
 		}
@@ -142,20 +146,20 @@ func silk_decode_core(
 			pred_lag_ptr = sLTP_buf_idx - lag + SilkConstants.LTP_ORDER/2
 			for i = 0; i < psDec.subfr_length; i++ {
 				/* Unrolled loop */
-				/* Avoids introducing a bias because silk_SMLAWB() always rounds to -inf */
+				/* Avoids introducing a bias because inlines.Silk_SMLAWB() always rounds to -inf */
 				LTP_pred_Q13 = 2
-				LTP_pred_Q13 = silk_SMLAWB(LTP_pred_Q13, sLTP_Q15[pred_lag_ptr], int(B_Q14[B_Q14_ptr]))
-				LTP_pred_Q13 = silk_SMLAWB(LTP_pred_Q13, sLTP_Q15[pred_lag_ptr-1], int(B_Q14[B_Q14_ptr+1]))
-				LTP_pred_Q13 = silk_SMLAWB(LTP_pred_Q13, sLTP_Q15[pred_lag_ptr-2], int(B_Q14[B_Q14_ptr+2]))
-				LTP_pred_Q13 = silk_SMLAWB(LTP_pred_Q13, sLTP_Q15[pred_lag_ptr-3], int(B_Q14[B_Q14_ptr+3]))
-				LTP_pred_Q13 = silk_SMLAWB(LTP_pred_Q13, sLTP_Q15[pred_lag_ptr-4], int(B_Q14[B_Q14_ptr+4]))
+				LTP_pred_Q13 = inlines.Silk_SMLAWB(LTP_pred_Q13, sLTP_Q15[pred_lag_ptr], int(B_Q14[B_Q14_ptr]))
+				LTP_pred_Q13 = inlines.Silk_SMLAWB(LTP_pred_Q13, sLTP_Q15[pred_lag_ptr-1], int(B_Q14[B_Q14_ptr+1]))
+				LTP_pred_Q13 = inlines.Silk_SMLAWB(LTP_pred_Q13, sLTP_Q15[pred_lag_ptr-2], int(B_Q14[B_Q14_ptr+2]))
+				LTP_pred_Q13 = inlines.Silk_SMLAWB(LTP_pred_Q13, sLTP_Q15[pred_lag_ptr-3], int(B_Q14[B_Q14_ptr+3]))
+				LTP_pred_Q13 = inlines.Silk_SMLAWB(LTP_pred_Q13, sLTP_Q15[pred_lag_ptr-4], int(B_Q14[B_Q14_ptr+4]))
 				pred_lag_ptr += 1
 
 				/* Generate LPC excitation */
-				pres_Q14[pres_Q14_ptr+i] = silk_ADD_LSHIFT32(psDec.exc_Q14[pexc_Q14+i], LTP_pred_Q13, 1)
+				pres_Q14[pres_Q14_ptr+i] = inlines.Silk_ADD_LSHIFT32(psDec.exc_Q14[pexc_Q14+i], LTP_pred_Q13, 1)
 
 				/* Update states */
-				sLTP_Q15[sLTP_buf_idx] = silk_LSHIFT(pres_Q14[pres_Q14_ptr+i], 1)
+				sLTP_Q15[sLTP_buf_idx] = inlines.Silk_LSHIFT(pres_Q14[pres_Q14_ptr+i], 1)
 				sLTP_buf_idx++
 			}
 		} else {
@@ -165,33 +169,33 @@ func silk_decode_core(
 
 		for i = 0; i < psDec.subfr_length; i++ {
 			/* Short-term prediction */
-			OpusAssert(psDec.LPC_order == 10 || psDec.LPC_order == 16)
-			/* Avoids introducing a bias because silk_SMLAWB() always rounds to -inf */
-			LPC_pred_Q10 = silk_RSHIFT(psDec.LPC_order, 1)
-			LPC_pred_Q10 = silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-1], int(A_Q12[0]))
-			LPC_pred_Q10 = silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-2], int(A_Q12[1]))
-			LPC_pred_Q10 = silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-3], int(A_Q12[2]))
-			LPC_pred_Q10 = silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-4], int(A_Q12[3]))
-			LPC_pred_Q10 = silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-5], int(A_Q12[4]))
-			LPC_pred_Q10 = silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-6], int(A_Q12[5]))
-			LPC_pred_Q10 = silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-7], int(A_Q12[6]))
-			LPC_pred_Q10 = silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-8], int(A_Q12[7]))
-			LPC_pred_Q10 = silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-9], int(A_Q12[8]))
-			LPC_pred_Q10 = silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-10], int(A_Q12[9]))
+			inlines.OpusAssert(psDec.LPC_order == 10 || psDec.LPC_order == 16)
+			/* Avoids introducing a bias because inlines.Silk_SMLAWB() always rounds to -inf */
+			LPC_pred_Q10 = inlines.Silk_RSHIFT(psDec.LPC_order, 1)
+			LPC_pred_Q10 = inlines.Silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-1], int(A_Q12[0]))
+			LPC_pred_Q10 = inlines.Silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-2], int(A_Q12[1]))
+			LPC_pred_Q10 = inlines.Silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-3], int(A_Q12[2]))
+			LPC_pred_Q10 = inlines.Silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-4], int(A_Q12[3]))
+			LPC_pred_Q10 = inlines.Silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-5], int(A_Q12[4]))
+			LPC_pred_Q10 = inlines.Silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-6], int(A_Q12[5]))
+			LPC_pred_Q10 = inlines.Silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-7], int(A_Q12[6]))
+			LPC_pred_Q10 = inlines.Silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-8], int(A_Q12[7]))
+			LPC_pred_Q10 = inlines.Silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-9], int(A_Q12[8]))
+			LPC_pred_Q10 = inlines.Silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-10], int(A_Q12[9]))
 			if psDec.LPC_order == 16 {
-				LPC_pred_Q10 = silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-11], int(A_Q12[10]))
-				LPC_pred_Q10 = silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-12], int(A_Q12[11]))
-				LPC_pred_Q10 = silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-13], int(A_Q12[12]))
-				LPC_pred_Q10 = silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-14], int(A_Q12[13]))
-				LPC_pred_Q10 = silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-15], int(A_Q12[14]))
-				LPC_pred_Q10 = silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-16], int(A_Q12[15]))
+				LPC_pred_Q10 = inlines.Silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-11], int(A_Q12[10]))
+				LPC_pred_Q10 = inlines.Silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-12], int(A_Q12[11]))
+				LPC_pred_Q10 = inlines.Silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-13], int(A_Q12[12]))
+				LPC_pred_Q10 = inlines.Silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-14], int(A_Q12[13]))
+				LPC_pred_Q10 = inlines.Silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-15], int(A_Q12[14]))
+				LPC_pred_Q10 = inlines.Silk_SMLAWB(LPC_pred_Q10, sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i-16], int(A_Q12[15]))
 			}
 
 			/* Add prediction to LPC excitation */
-			sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i] = silk_ADD_LSHIFT32(pres_Q14[pres_Q14_ptr+i], LPC_pred_Q10, 4)
+			sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i] = inlines.Silk_ADD_LSHIFT32(pres_Q14[pres_Q14_ptr+i], LPC_pred_Q10, 4)
 
 			/* Scale with gain */
-			xq[pxq+i] = int16(silk_SAT16(silk_RSHIFT_ROUND(silk_SMULWW(sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i], Gain_Q10), 8)))
+			xq[pxq+i] = int16(inlines.Silk_SAT16(inlines.Silk_RSHIFT_ROUND(inlines.Silk_SMULWW(sLPC_Q14[SilkConstants.MAX_LPC_ORDER+i], Gain_Q10), 8)))
 		}
 
 		/* DEBUG_STORE_DATA( dec.pcm, pxq, psDec.subfr_length * sizeof( short ) ) */

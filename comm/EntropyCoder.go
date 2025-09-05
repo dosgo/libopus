@@ -24,12 +24,12 @@ var correction = []int{35733, 38967, 42495, 46340, 50535, 55109, 60097, 65535}
 type EntropyCoder struct {
 	buf         []byte
 	buf_ptr     int
-	storage     int
+	Storage     int
 	end_offs    int
 	end_window  int64
 	nend_bits   int
 	nbits_total int
-	offs        int
+	Offs        int
 	rng         int64
 	val         int64
 	ext         int64
@@ -45,11 +45,11 @@ func NewEntropyCoder() *EntropyCoder {
 func (ec *EntropyCoder) Reset() {
 	ec.buf = nil
 	ec.buf_ptr = 0
-	ec.storage = 0
+	ec.Storage = 0
 	ec.end_offs = 0
 	ec.end_window = 0
 	ec.nend_bits = 0
-	ec.offs = 0
+	ec.Offs = 0
 	ec.rng = 0
 	ec.val = 0
 	ec.ext = 0
@@ -60,12 +60,12 @@ func (ec *EntropyCoder) Reset() {
 func (ec *EntropyCoder) Assign(other *EntropyCoder) {
 	ec.buf = other.buf
 	ec.buf_ptr = other.buf_ptr
-	ec.storage = other.storage
+	ec.Storage = other.Storage
 	ec.end_offs = other.end_offs
 	ec.end_window = other.end_window
 	ec.nend_bits = other.nend_bits
 	ec.nbits_total = other.nbits_total
-	ec.offs = other.offs
+	ec.Offs = other.Offs
 	ec.rng = other.rng
 	ec.val = other.val
 	ec.ext = other.ext
@@ -73,48 +73,48 @@ func (ec *EntropyCoder) Assign(other *EntropyCoder) {
 	ec.error = other.error
 }
 
-func (ec *EntropyCoder) get_buffer() []byte {
-	bufCopy := make([]byte, ec.storage)
-	copy(bufCopy, ec.buf[ec.buf_ptr:ec.buf_ptr+ec.storage])
+func (ec *EntropyCoder) Get_buffer() []byte {
+	bufCopy := make([]byte, ec.Storage)
+	copy(bufCopy, ec.buf[ec.buf_ptr:ec.buf_ptr+ec.Storage])
 	return bufCopy
 }
 
-func (ec *EntropyCoder) write_buffer(data []byte, data_ptr int, target_offset int, size int) {
+func (ec *EntropyCoder) Write_buffer(data []byte, data_ptr int, target_offset int, size int) {
 	copy(ec.buf[ec.buf_ptr+target_offset:], data[data_ptr:data_ptr+size])
 }
 
 func (ec *EntropyCoder) read_byte() int {
-	if ec.offs < ec.storage {
-		val := ec.buf[ec.buf_ptr+ec.offs]
-		ec.offs++
+	if ec.Offs < ec.Storage {
+		val := ec.buf[ec.buf_ptr+ec.Offs]
+		ec.Offs++
 		return int(val)
 	}
 	return 0
 }
 
 func (ec *EntropyCoder) read_byte_from_end() int {
-	if ec.end_offs < ec.storage {
+	if ec.end_offs < ec.Storage {
 		ec.end_offs++
-		return int(ec.buf[ec.buf_ptr+(ec.storage-ec.end_offs)])
+		return int(ec.buf[ec.buf_ptr+(ec.Storage-ec.end_offs)])
 	}
 	return 0
 }
 
 func (ec *EntropyCoder) write_byte(_value int64) int {
-	if ec.offs+ec.end_offs >= ec.storage {
+	if ec.Offs+ec.end_offs >= ec.Storage {
 		return -1
 	}
-	ec.buf[ec.buf_ptr+ec.offs] = byte(_value)
-	ec.offs++
+	ec.buf[ec.buf_ptr+ec.Offs] = byte(_value)
+	ec.Offs++
 	return 0
 }
 
 func (ec *EntropyCoder) write_byte_at_end(_value int64) int {
-	if ec.offs+ec.end_offs >= ec.storage {
+	if ec.Offs+ec.end_offs >= ec.Storage {
 		return -1
 	}
 	ec.end_offs++
-	ec.buf[ec.buf_ptr+(ec.storage-ec.end_offs)] = byte(_value)
+	ec.buf[ec.buf_ptr+(ec.Storage-ec.end_offs)] = byte(_value)
 	return 0
 }
 
@@ -142,12 +142,12 @@ func (ec *EntropyCoder) dec_init(_buf []byte, _buf_ptr int, _storage int) {
 
 	ec.buf = _buf
 	ec.buf_ptr = _buf_ptr
-	ec.storage = _storage
+	ec.Storage = _storage
 	ec.end_offs = 0
 	ec.end_window = 0
 	ec.nend_bits = 0
 	ec.nbits_total = EC_CODE_BITS + 1 - ((EC_CODE_BITS-EC_CODE_EXTRA)/EC_SYM_BITS)*EC_SYM_BITS
-	ec.offs = 0
+	ec.Offs = 0
 	ec.rng = 1 << EC_CODE_EXTRA
 	ec.rem = ec.read_byte()
 	//ec.val = ec.rng - 1 - int64(ec.rem>>(EC_SYM_BITS-EC_CODE_EXTRA))
@@ -229,7 +229,7 @@ func (ec *EntropyCoder) Dec_icdf(_icdf []int16, _ftb int) int {
 	return ret
 }
 
-func (ec *EntropyCoder) dec_icdf_offset(_icdf []int16, _icdf_offset int, _ftb int) int {
+func (ec *EntropyCoder) Dec_icdf_offset(_icdf []int16, _icdf_offset int, _ftb int) int {
 	var t int64
 	var s = ec.rng
 	var d = ec.val
@@ -351,16 +351,16 @@ func (ec *EntropyCoder) enc_init(_buf []byte, buf_ptr int, _size int) {
 	ec.end_window = 0
 	ec.nend_bits = 0
 	ec.nbits_total = EC_CODE_BITS + 1
-	ec.offs = 0
+	ec.Offs = 0
 	ec.rng = inlines.CapToUInt32(EC_CODE_TOP)
 	ec.rem = -1
 	ec.val = 0
 	ec.ext = 0
-	ec.storage = _size
+	ec.Storage = _size
 	ec.error = 0
 }
 
-func (ec *EntropyCoder) encode(_fl int64, _fh int64, _ft int64) {
+func (ec *EntropyCoder) Encode(_fl int64, _fh int64, _ft int64) {
 	_fl = inlines.CapToUInt32(_fl)
 	_fh = inlines.CapToUInt32(_fh)
 	_ft = inlines.CapToUInt32(_ft)
@@ -375,7 +375,7 @@ func (ec *EntropyCoder) encode(_fl int64, _fh int64, _ft int64) {
 	ec.enc_normalize()
 }
 
-func (ec *EntropyCoder) encode_bin(_fl int64, _fh int64, _bits int) {
+func (ec *EntropyCoder) Encode_bin(_fl int64, _fh int64, _bits int) {
 	_fl = inlines.CapToUInt32(_fl)
 	_fh = inlines.CapToUInt32(_fh)
 	r := inlines.CapToUInt32(ec.rng >> _bits)
@@ -389,7 +389,7 @@ func (ec *EntropyCoder) encode_bin(_fl int64, _fh int64, _bits int) {
 	ec.enc_normalize()
 }
 
-func (ec *EntropyCoder) enc_bit_logp(_val int, _logp int) {
+func (ec *EntropyCoder) Enc_bit_logp(_val int, _logp int) {
 
 	r := ec.rng
 	l := ec.val
@@ -406,7 +406,7 @@ func (ec *EntropyCoder) enc_bit_logp(_val int, _logp int) {
 	ec.enc_normalize()
 }
 
-func (ec *EntropyCoder) enc_icdf(_s int, _icdf []int16, _ftb int) {
+func (ec *EntropyCoder) Enc_icdf(_s int, _icdf []int16, _ftb int) {
 	old := ec.rng
 	r := inlines.CapToUInt32(ec.rng >> _ftb)
 	if _s > 0 {
@@ -422,7 +422,7 @@ func (ec *EntropyCoder) enc_icdf(_s int, _icdf []int16, _ftb int) {
 	}
 }
 
-func (ec *EntropyCoder) enc_icdf_offset(_s int, _icdf []int16, icdf_ptr int, _ftb int) {
+func (ec *EntropyCoder) Enc_icdf_offset(_s int, _icdf []int16, icdf_ptr int, _ftb int) {
 	old := ec.rng
 	r := inlines.CapToUInt32(ec.rng >> _ftb)
 	if _s > 0 {
@@ -437,7 +437,7 @@ func (ec *EntropyCoder) enc_icdf_offset(_s int, _icdf []int16, icdf_ptr int, _ft
 	}
 }
 
-func (ec *EntropyCoder) enc_uint(_fl int64, _ft int64) {
+func (ec *EntropyCoder) Enc_uint(_fl int64, _ft int64) {
 
 	_fl = inlines.CapToUInt32(_fl)
 	_ft = inlines.CapToUInt32(_ft)
@@ -453,15 +453,15 @@ func (ec *EntropyCoder) enc_uint(_fl int64, _ft int64) {
 		ftb -= EC_UINT_BITS
 		ft = inlines.CapToUInt32((_ft >> ftb) + 1)
 		fl = inlines.CapToUInt32(_fl >> ftb)
-		ec.encode(fl, fl+1, ft)
-		ec.enc_bits(_fl&inlines.CapToUInt32((1<<ftb)-1), ftb)
+		ec.Encode(fl, fl+1, ft)
+		ec.Enc_bits(_fl&inlines.CapToUInt32((1<<ftb)-1), ftb)
 	} else {
-		ec.encode(_fl, _fl+1, _ft+1)
+		ec.Encode(_fl, _fl+1, _ft+1)
 	}
 
 }
 
-func (ec *EntropyCoder) enc_bits(_fl int64, _bits int) {
+func (ec *EntropyCoder) Enc_bits(_fl int64, _bits int) {
 	window := ec.end_window
 	used := ec.nend_bits
 	if used+_bits > EC_WINDOW_SIZE {
@@ -482,7 +482,7 @@ func (ec *EntropyCoder) enc_bits(_fl int64, _bits int) {
 func (ec *EntropyCoder) enc_patch_initial_bits(_val int64, _nbits int) {
 	shift := EC_SYM_BITS - _nbits
 	mask := int64(((1 << _nbits) - 1) << shift)
-	if ec.offs > 0 {
+	if ec.Offs > 0 {
 		ec.buf[ec.buf_ptr] = (ec.buf[ec.buf_ptr] & ^byte(mask)) | byte(_val<<shift)
 	} else if ec.rem >= 0 {
 		ec.rem = int((int64(ec.rem) & ^mask) | (_val << shift))
@@ -494,26 +494,26 @@ func (ec *EntropyCoder) enc_patch_initial_bits(_val int64, _nbits int) {
 }
 
 func (ec *EntropyCoder) enc_shrink(_size int) {
-	if ec.offs+ec.end_offs > _size {
+	if ec.Offs+ec.end_offs > _size {
 		panic("offs + end_offs > size")
 	}
-	copy(ec.buf[ec.buf_ptr+_size-ec.end_offs:], ec.buf[ec.buf_ptr+ec.storage-ec.end_offs:ec.buf_ptr+ec.storage])
-	ec.storage = _size
+	copy(ec.buf[ec.buf_ptr+_size-ec.end_offs:], ec.buf[ec.buf_ptr+ec.Storage-ec.end_offs:ec.buf_ptr+ec.Storage])
+	ec.Storage = _size
 }
 
-func (ec *EntropyCoder) range_bytes() int {
-	return ec.offs
+func (ec *EntropyCoder) Range_bytes() int {
+	return ec.Offs
 }
 
 func (ec *EntropyCoder) get_error() int {
 	return ec.error
 }
 
-func (ec *EntropyCoder) tell() int {
+func (ec *EntropyCoder) Tell() int {
 	return ec.nbits_total - inlines.EC_ILOG(int64(ec.rng))
 }
 
-func (ec *EntropyCoder) tell_frac() int {
+func (ec *EntropyCoder) Tell_frac() int {
 	var nbits int
 	var r int
 	var l int
@@ -570,21 +570,21 @@ func (ec *EntropyCoder) enc_done() {
 
 	/*Clear any excess space and add any remaining extra bits to the last byte.*/
 	if ec.error == 0 {
-		arrayUtil.MemSetWithOffset(ec.buf, 0, ec.buf_ptr+ec.offs, ec.storage-ec.offs-ec.end_offs)
+		arrayUtil.MemSetWithOffset(ec.buf, 0, ec.buf_ptr+ec.Offs, ec.Storage-ec.Offs-ec.end_offs)
 		if used > 0 {
 			/*If there's no range coder data at all, give up.*/
-			if ec.end_offs >= ec.storage {
+			if ec.end_offs >= ec.Storage {
 				ec.error = -1
 			} else {
 				l = -l
 				/*If we've busted, don't add too many extra bits to the last byte; it
 				  would corrupt the range coder data, and that's more important.*/
-				if ec.offs+ec.end_offs >= ec.storage && l < used {
+				if ec.Offs+ec.end_offs >= ec.Storage && l < used {
 					window = inlines.CapToUInt32(window & ((1 << l) - 1))
 					ec.error = -1
 				}
 
-				z := ec.buf_ptr + ec.storage - ec.end_offs - 1
+				z := ec.buf_ptr + ec.Storage - ec.end_offs - 1
 				ec.buf[z] = (byte)(ec.buf[z] | (byte)(window&0xFF))
 			}
 		}

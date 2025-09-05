@@ -1,11 +1,9 @@
-package celt
-
-import "github.com/dosgo/libopus/comm"
+package comm
 
 const QC = 10
 const QS = 14
 
-func silk_autocorr(results []int, scale *comm.BoxedValueInt, inputData []int16, inputDataSize int, correlationCount int) {
+func Silk_autocorr(results []int, scale *BoxedValueInt, inputData []int16, inputDataSize int, correlationCount int) {
 	corrCount := inlines.Silk_min_int(inputDataSize, correlationCount)
 	scale.Val = _celt_autocorr(inputData, results, corrCount-1, inputDataSize)
 }
@@ -79,7 +77,7 @@ func _celt_autocorr(x []int16, ac []int, lag int, n int) int {
 	return shift
 }
 
-func _celt_autocorr_with_window(x []int, ac []int, window []int, overlap int, lag int, n int) int {
+func Celt_autocorr_with_window(x []int, ac []int, window []int, overlap int, lag int, n int) int {
 	d := int(0)
 	fastN := n - lag
 	shift := 0
@@ -122,7 +120,7 @@ func _celt_autocorr_with_window(x []int, ac []int, window []int, overlap int, la
 		shift = 0
 	}
 
-	pitch_xcorr(xptr, xptr, ac, fastN, lag+1)
+	Pitch_xcorr(xptr, xptr, ac, fastN, lag+1)
 	for k := 0; k <= lag; k++ {
 		d = 0
 		for i := k + fastN; i < n; i++ {
@@ -155,7 +153,7 @@ func _celt_autocorr_with_window(x []int, ac []int, window []int, overlap int, la
 	return shift
 }
 
-func silk_warped_autocorr(corr []int, scale *comm.BoxedValueInt, input []int16, warping_Q16 int, length int, order int) {
+func Silk_warped_autocorr(corr []int, scale *BoxedValueInt, input []int16, warping_Q16 int, length int, order int) {
 	var n, i, lsh int
 	var tmp1_QS, tmp2_QS int
 	state_QS := make([]int, SilkConstants.MAX_SHAPE_LPC_ORDER+1)

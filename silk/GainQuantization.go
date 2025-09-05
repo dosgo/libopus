@@ -30,32 +30,34 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-package opus
+package silk
+
+import "github.com/dosgo/libopus/comm"
 
 var OFFSET = ((MIN_QGAIN_DB*128)/6 + 16*128)
 var SCALE_Q16 = ((65536 * (N_LEVELS_QGAIN - 1)) / (((MAX_QGAIN_DB - MIN_QGAIN_DB) * 128) / 6))
 var INV_SCALE_Q16 = ((65536 * (((MAX_QGAIN_DB - MIN_QGAIN_DB) * 128) / 6)) / (N_LEVELS_QGAIN - 1))
 
-func silk_gains_quant(ind []int8, gain_Q16 []int, prev_ind *BoxedValueByte, conditional int, nb_subfr int) {
+func silk_gains_quant(ind []int8, gain_Q16 []int, prev_ind *comm.BoxedValueByte, conditional int, nb_subfr int) {
 
 	var k, double_step_size_threshold int
 
 	for k = 0; k < nb_subfr; k++ {
 		// Debug.WriteLine("2a 0x{0:x}", (uint)gain_Q16[k]);
 		/* Convert to log scale, scale, floor() */
-		ind[k] = int8(silk_SMULWB(SCALE_Q16, silk_lin2log(gain_Q16[k])-OFFSET))
+		ind[k] = int8(inlines.Silk_SMULWB(SCALE_Q16, inlines.Silk_lin2log(gain_Q16[k])-OFFSET))
 
 		/* Round towards previous quantized gain (hysteresis) */
 		if ind[k] < prev_ind.Val {
 			ind[k]++
 		}
 
-		ind[k] = int8(silk_LIMIT_int(int(ind[k]), 0, SilkConstants.N_LEVELS_QGAIN-1))
+		ind[k] = int8(inlines.Silk_LIMIT_int(int(ind[k]), 0, SilkConstants.N_LEVELS_QGAIN-1))
 
 		/* Compute delta indices and limit */
 		if k == 0 && conditional == 0 {
 			/* Full index */
-			ind[k] = int8(silk_LIMIT_int(int(ind[k]), int(prev_ind.Val)+SilkConstants.MIN_DELTA_GAIN_QUANT, SilkConstants.N_LEVELS_QGAIN-1))
+			ind[k] = int8(inlines.Silk_LIMIT_int(int(ind[k]), int(prev_ind.Val)+SilkConstants.MIN_DELTA_GAIN_QUANT, SilkConstants.N_LEVELS_QGAIN-1))
 			prev_ind.Val = ind[k]
 		} else {
 			/* Delta index */
@@ -64,14 +66,14 @@ func silk_gains_quant(ind []int8, gain_Q16 []int, prev_ind *BoxedValueByte, cond
 			/* Double the quantization step size for large gain increases, so that the max gain level can be reached */
 			double_step_size_threshold = 2*SilkConstants.MAX_DELTA_GAIN_QUANT - SilkConstants.N_LEVELS_QGAIN + int(prev_ind.Val)
 			if int(ind[k]) > double_step_size_threshold {
-				ind[k] = int8(double_step_size_threshold + silk_RSHIFT(int(ind[k])-double_step_size_threshold+1, 1))
+				ind[k] = int8(double_step_size_threshold + inlines.Silk_RSHIFT(int(ind[k])-double_step_size_threshold+1, 1))
 			}
 
-			ind[k] = int8(silk_LIMIT_int(int(ind[k]), SilkConstants.MIN_DELTA_GAIN_QUANT, SilkConstants.MAX_DELTA_GAIN_QUANT))
+			ind[k] = int8(inlines.Silk_LIMIT_int(int(ind[k]), SilkConstants.MIN_DELTA_GAIN_QUANT, SilkConstants.MAX_DELTA_GAIN_QUANT))
 
 			/* Accumulate deltas */
 			if int(ind[k]) > double_step_size_threshold {
-				prev_ind.Val = int8(int(prev_ind.Val) + silk_LSHIFT(int(ind[k]), 1) - double_step_size_threshold)
+				prev_ind.Val = int8(int(prev_ind.Val) + inlines.Silk_LSHIFT(int(ind[k]), 1) - double_step_size_threshold)
 			} else {
 				prev_ind.Val = (prev_ind.Val + ind[k])
 			}
@@ -82,38 +84,38 @@ func silk_gains_quant(ind []int8, gain_Q16 []int, prev_ind *BoxedValueByte, cond
 		}
 
 		/* Scale and convert to linear scale */
-		gain_Q16[k] = silk_log2lin(silk_min_32(silk_SMULWB(INV_SCALE_Q16, int(prev_ind.Val))+OFFSET, 3967))
+		gain_Q16[k] = inlines.Silk_log2lin(inlines.Silk_min_32(inlines.Silk_SMULWB(INV_SCALE_Q16, int(prev_ind.Val))+OFFSET, 3967))
 		/* 3967 = 31 in Q7 */
 	}
 
 }
 
-func silk_gains_dequant(gain_Q16 []int, ind []int8, prev_ind *BoxedValueByte, conditional int, nb_subfr int) {
+func silk_gains_dequant(gain_Q16 []int, ind []int8, prev_ind *comm.BoxedValueByte, conditional int, nb_subfr int) {
 
 	for k := 0; k < nb_subfr; k++ {
 		if k == 0 && conditional == 0 {
-			prev_ind.Val = int8(silk_max_int(int(ind[k]), int(prev_ind.Val)-16))
+			prev_ind.Val = int8(inlines.Silk_max_int(int(ind[k]), int(prev_ind.Val)-16))
 		} else {
 			ind_tmp := int(ind[k]) + MIN_DELTA_GAIN_QUANT
 
 			double_step_size_threshold := 2*MAX_DELTA_GAIN_QUANT - N_LEVELS_QGAIN + int(prev_ind.Val)
 			if ind_tmp > double_step_size_threshold {
-				prev_ind.Val = int8(int(prev_ind.Val) + (silk_LSHIFT(int(ind_tmp), 1) - double_step_size_threshold))
+				prev_ind.Val = int8(int(prev_ind.Val) + (inlines.Silk_LSHIFT(int(ind_tmp), 1) - double_step_size_threshold))
 			} else {
 				prev_ind.Val = int8(int(prev_ind.Val) + ind_tmp)
 			}
 		}
 
-		prev_ind.Val = int8(silk_LIMIT_int(int(prev_ind.Val), 0, N_LEVELS_QGAIN-1))
+		prev_ind.Val = int8(inlines.Silk_LIMIT_int(int(prev_ind.Val), 0, N_LEVELS_QGAIN-1))
 
-		gain_Q16[k] = silk_log2lin(silk_min_32(silk_SMULWB(INV_SCALE_Q16, int(prev_ind.Val))+OFFSET, 3967))
+		gain_Q16[k] = inlines.Silk_log2lin(inlines.Silk_min_32(inlines.Silk_SMULWB(INV_SCALE_Q16, int(prev_ind.Val))+OFFSET, 3967))
 	}
 }
 
 func silk_gains_ID(ind []int8, nb_subfr int) int {
 	gainsID := int(0)
 	for k := 0; k < nb_subfr; k++ {
-		gainsID = silk_ADD_LSHIFT32(int(ind[k]), gainsID, 8)
+		gainsID = inlines.Silk_ADD_LSHIFT32(int(ind[k]), gainsID, 8)
 	}
 	return gainsID
 }

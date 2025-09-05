@@ -15,7 +15,7 @@ type band_ctx struct {
 	intensity      int
 	spread         int
 	tf_change      int
-	ec             *EntropyCoder
+	ec             *comm.EntropyCoder
 	remaining_bits int
 	bandE          [][]int
 	seed           int
@@ -547,7 +547,7 @@ func compute_theta1(ctx *band_ctx, sctx *split_ctx, X []int, X_ptr int, Y []int,
 		itheta = stereo_itheta(X, X_ptr, Y, Y_ptr, stereo, N)
 	}
 
-	tell := int(ec.tell_frac())
+	tell := int(ec.Tell_frac())
 	if qn != 1 {
 		if encode != 0 {
 			itheta = (itheta*qn + 8192) >> 14
@@ -560,29 +560,29 @@ func compute_theta1(ctx *band_ctx, sctx *split_ctx, X []int, X_ptr int, Y []int,
 			ft := inlines.CapToUintLong(int64(p0*(x0+1) + x0))
 			if encode != 0 {
 				if x <= x0 {
-					ec.encode(int64(p0*x), int64(p0*(x+1)), ft)
+					ec.Encode(int64(p0*x), int64(p0*(x+1)), ft)
 				} else {
-					ec.encode(int64((x-1-x0)+(x0+1)*p0), int64((x-x0)+(x0+1)*p0), ft)
+					ec.Encode(int64((x-1-x0)+(x0+1)*p0), int64((x-x0)+(x0+1)*p0), ft)
 				}
 			} else {
-				fs := int(ec.decode(ft))
+				fs := int(ec.Decode(ft))
 				if fs < (x0+1)*p0 {
 					x = fs / p0
 				} else {
 					x = x0 + 1 + (fs - (x0+1)*p0)
 				}
 				if x <= x0 {
-					ec.dec_update(int64(p0*x), int64(p0*(x+1)), ft)
+					ec.Dec_update(int64(p0*x), int64(p0*(x+1)), ft)
 				} else {
-					ec.dec_update(int64((x-1-x0)+(x0+1)*p0), int64((x-x0)+(x0+1)*p0), ft)
+					ec.Dec_update(int64((x-1-x0)+(x0+1)*p0), int64((x-x0)+(x0+1)*p0), ft)
 				}
 				itheta = x
 			}
 		} else if B0 > 1 || stereo != 0 {
 			if encode != 0 {
-				ec.enc_uint(int64(itheta), int64(qn+1))
+				ec.Enc_uint(int64(itheta), int64(qn+1))
 			} else {
-				itheta = int(ec.dec_uint(int64(qn + 1)))
+				itheta = int(ec.Dec_uint(int64(qn + 1)))
 			}
 		} else {
 			var fs = 1
@@ -597,9 +597,9 @@ func compute_theta1(ctx *band_ctx, sctx *split_ctx, X []int, X_ptr int, Y []int,
 					fs = qn + 1 - itheta
 					fl = ft - ((qn + 1 - itheta) * (qn + 2 - itheta) >> 1)
 				}
-				ec.encode(int64(fl), int64(fl+fs), int64(ft))
+				ec.Encode(int64(fl), int64(fl+fs), int64(ft))
 			} else {
-				fm := int(ec.decode(int64(ft)))
+				fm := int(ec.Decode(int64(ft)))
 				fl := 0
 				if fm < (qn>>1)*((qn>>1)+1)>>1 {
 					itheta = (inlines.Isqrt32(int64(8*fm+1)) - 1) >> 1
@@ -610,7 +610,7 @@ func compute_theta1(ctx *band_ctx, sctx *split_ctx, X []int, X_ptr int, Y []int,
 					fs = qn + 1 - itheta
 					fl = ft - ((qn + 1 - itheta) * (qn + 2 - itheta) >> 1)
 				}
-				ec.dec_update(int64(fl), int64(fl+fs), int64(ft))
+				ec.Dec_update(int64(fl), int64(fl+fs), int64(ft))
 			}
 		}
 		inlines.OpusAssert(itheta >= 0)
@@ -635,16 +635,16 @@ func compute_theta1(ctx *band_ctx, sctx *split_ctx, X []int, X_ptr int, Y []int,
 		}
 		if b.Val > 2<<BITRES && ctx.remaining_bits > 2<<BITRES {
 			if encode != 0 {
-				ec.enc_bit_logp(inv, 2)
+				ec.Enc_bit_logp(inv, 2)
 			} else {
-				inv = ec.dec_bit_logp(2)
+				inv = ec.Dec_bit_logp(2)
 			}
 		} else {
 			inv = 0
 		}
 		itheta = 0
 	}
-	qalloc := int(ec.tell_frac()) - tell
+	qalloc := int(ec.Tell_frac()) - tell
 	b.Val -= qalloc
 
 	var imid = 0
@@ -691,7 +691,7 @@ func compute_theta(ctx *band_ctx, sctx *split_ctx, X []int, X_ptr int, Y []int, 
 	var m *CeltMode
 	var i int
 	var intensity int
-	var ec *EntropyCoder // porting note: pointer
+	var ec *comm.EntropyCoder // porting note: pointer
 	var bandE [][]int
 
 	encode = ctx.encode
@@ -722,7 +722,7 @@ func compute_theta(ctx *band_ctx, sctx *split_ctx, X []int, X_ptr int, Y []int, 
 		itheta = stereo_itheta(X, X_ptr, Y, Y_ptr, stereo, N)
 	}
 
-	tell = ec.tell_frac()
+	tell = ec.Tell_frac()
 
 	if qn != 1 {
 		if encode != 0 {
@@ -739,23 +739,23 @@ func compute_theta(ctx *band_ctx, sctx *split_ctx, X []int, X_ptr int, Y []int, 
 			/* Use a probability of p0 up to itheta=8192 and then use 1 after */
 			if encode != 0 {
 				if x <= x0 {
-					ec.encode(int64((p0 * x)), int64((p0 * (x + 1))), ft)
+					ec.Encode(int64((p0 * x)), int64((p0 * (x + 1))), ft)
 				} else {
-					ec.encode(int64((x-1-x0)+(x0+1)*p0), int64((x-x0)+(x0+1)*p0), ft)
+					ec.Encode(int64((x-1-x0)+(x0+1)*p0), int64((x-x0)+(x0+1)*p0), ft)
 
 				}
 
 			} else {
-				var fs = ec.decode(ft)
+				var fs = ec.Decode(ft)
 				if fs < int64((x0+1)*p0) {
 					x = int(fs / int64(p0))
 				} else {
 					x = x0 + 1 + int(fs-int64(x0+1)*int64(p0))
 				}
 				if x <= x0 {
-					ec.dec_update(int64(p0*x), int64(p0*(x+1)), ft)
+					ec.Dec_update(int64(p0*x), int64(p0*(x+1)), ft)
 				} else {
-					ec.dec_update(int64((x-1-x0)+(x0+1)*p0), int64((x-x0)+(x0+1)*p0), ft)
+					ec.Dec_update(int64((x-1-x0)+(x0+1)*p0), int64((x-x0)+(x0+1)*p0), ft)
 				}
 
 				itheta = x
@@ -763,9 +763,9 @@ func compute_theta(ctx *band_ctx, sctx *split_ctx, X []int, X_ptr int, Y []int, 
 		} else if B0 > 1 || stereo != 0 {
 			/* Uniform pdf */
 			if encode != 0 {
-				ec.enc_uint(int64(itheta), int64(qn+1))
+				ec.Enc_uint(int64(itheta), int64(qn+1))
 			} else {
-				itheta = int(ec.dec_uint(int64(qn + 1)))
+				itheta = int(ec.Dec_uint(int64(qn + 1)))
 			}
 		} else {
 			var fs = 1
@@ -781,12 +781,12 @@ func compute_theta(ctx *band_ctx, sctx *split_ctx, X []int, X_ptr int, Y []int, 
 					fl = ft - ((qn + 1 - itheta) * (qn + 2 - itheta) >> 1)
 				}
 
-				ec.encode(int64(fl), int64(fl+fs), int64(ft))
+				ec.Encode(int64(fl), int64(fl+fs), int64(ft))
 			} else {
 				/* Triangular pdf */
 				var fl = 0
 				var fm int
-				fm = int(ec.decode(int64(ft)))
+				fm = int(ec.Decode(int64(ft)))
 
 				if fm < ((qn >> 1) * ((qn >> 1) + 1) >> 1) {
 					itheta = (inlines.Isqrt32(int64(8*fm+1)) - 1) >> 1
@@ -798,7 +798,7 @@ func compute_theta(ctx *band_ctx, sctx *split_ctx, X []int, X_ptr int, Y []int, 
 					fl = ft - ((qn + 1 - itheta) * (qn + 2 - itheta) >> 1)
 				}
 
-				ec.dec_update(int64(fl), int64(fl+fs), int64(ft))
+				ec.Dec_update(int64(fl), int64(fl+fs), int64(ft))
 			}
 		}
 		inlines.OpusAssert(itheta >= 0)
@@ -823,16 +823,16 @@ func compute_theta(ctx *band_ctx, sctx *split_ctx, X []int, X_ptr int, Y []int, 
 		}
 		if b.Val > 2<<BITRES && ctx.remaining_bits > 2<<BITRES {
 			if encode != 0 {
-				ec.enc_bit_logp(inv, 2)
+				ec.Enc_bit_logp(inv, 2)
 			} else {
-				inv = ec.dec_bit_logp(2)
+				inv = ec.Dec_bit_logp(2)
 			}
 		} else {
 			inv = 0
 		}
 		itheta = 0
 	}
-	qalloc = ec.tell_frac() - tell
+	qalloc = ec.Tell_frac() - tell
 	b.Val -= qalloc
 
 	if itheta == 0 {
@@ -883,9 +883,9 @@ func quant_band_n1(ctx *band_ctx, X []int, X_ptr int, Y []int, Y_ptr int, b int,
 				if x[x_ptr] < 0 {
 					sign = 1
 				}
-				ec.enc_bits(int64(sign), 1)
+				ec.Enc_bits(int64(sign), 1)
 			} else {
-				sign = ec.dec_bits(1)
+				sign = ec.Dec_bits(1)
 			}
 			ctx.remaining_bits -= 1 << BITRES
 			b -= 1 << BITRES
@@ -923,7 +923,7 @@ func quant_partition(ctx *band_ctx, X []int, X_ptr int, N int, b int, B int, low
 	var m *CeltMode //porting note: pointer
 	var i int
 	var spread int
-	var ec *EntropyCoder //porting note: pointer
+	var ec *comm.EntropyCoder //porting note: pointer
 
 	encode = ctx.encode
 	m = ctx.m
@@ -1274,9 +1274,9 @@ func quant_band_stereo(ctx *band_ctx, X []int, X_ptr int, Y []int, Y_ptr int, N 
 				if x2[x2_ptr]*y2[y2_ptr+1]-x2[x2_ptr+1]*y2[y2_ptr] < 0 {
 					sign = 1
 				}
-				ec.enc_bits(int64(sign), 1)
+				ec.Enc_bits(int64(sign), 1)
 			} else {
-				sign = ec.dec_bits(1)
+				sign = ec.Dec_bits(1)
 			}
 		}
 		sign = 1 - 2*sign
@@ -1333,7 +1333,7 @@ func quant_band_stereo(ctx *band_ctx, X []int, X_ptr int, Y []int, Y_ptr int, N 
 	return cm
 }
 
-func quant_all_bands(encode int, m *CeltMode, start int, end int, X_ []int, Y_ []int, collapse_masks []int16, bandE [][]int, pulses []int, shortBlocks int, spread int, dual_stereo int, intensity int, tf_res []int, total_bits int, balance int, ec *EntropyCoder, LM int, codedBands int, seed *comm.BoxedValueInt) {
+func quant_all_bands(encode int, m *CeltMode, start int, end int, X_ []int, Y_ []int, collapse_masks []int16, bandE [][]int, pulses []int, shortBlocks int, spread int, dual_stereo int, intensity int, tf_res []int, total_bits int, balance int, ec *comm.EntropyCoder, LM int, codedBands int, seed *comm.BoxedValueInt) {
 
 	eBands := m.eBands
 	M := 1 << LM
@@ -1381,7 +1381,7 @@ func quant_all_bands(encode int, m *CeltMode, start int, end int, X_ []int, Y_ [
 		Y := Y_
 		Y_ptr := M * int(eBands[i])
 		N := M*int(eBands[i+1]) - X_ptr
-		tell := int(ec.tell_frac())
+		tell := int(ec.Tell_frac())
 		if i != start {
 			balance -= tell
 		}

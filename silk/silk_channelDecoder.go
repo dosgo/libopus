@@ -1,5 +1,10 @@
 package silk
 
+import (
+	"github.com/dosgo/libopus/comm"
+	"github.com/dosgo/libopus/comm/arrayUtil"
+)
+
 type SilkChannelDecoder struct {
 	prev_gain_Q16           int
 	exc_Q14                 []int
@@ -173,7 +178,7 @@ func (d *SilkChannelDecoder) silk_decoder_set_fs(fs_kHz, fs_API_Hz int) int {
 	return ret
 }
 
-func (d *SilkChannelDecoder) silk_decode_frame(psRangeDec *EntropyCoder, pOut []int16, pOut_ptr int, pN *BoxedValueInt, lostFlag, condCoding int) int {
+func (d *SilkChannelDecoder) silk_decode_frame(psRangeDec *comm.EntropyCoder, pOut []int16, pOut_ptr int, pN *BoxedValueInt, lostFlag, condCoding int) int {
 	thisCtrl := NewSilkDecoderControl()
 	var L, mv_len, ret int = 0, 0, 0
 
@@ -253,7 +258,7 @@ func (d *SilkChannelDecoder) silk_decode_frame(psRangeDec *EntropyCoder, pOut []
 	 */
 	inlines.OpusAssert(d.ltp_mem_length >= d.frame_length)
 	mv_len = d.ltp_mem_length - d.frame_length
-	MemMove(d.outBuf, d.frame_length, 0, mv_len)
+	arrayUtil.MemMove(d.outBuf, d.frame_length, 0, mv_len)
 	//System.arraycopy(pOut, pOut_ptr, d.outBuf, mv_len, d.frame_length)
 	copy(d.outBuf[mv_len:], pOut[pOut_ptr:pOut_ptr+d.frame_length])
 

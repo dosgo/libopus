@@ -1,7 +1,10 @@
-package opus
+package silk
 
 import (
 	"math"
+
+	"github.com/dosgo/libopus/comm"
+	"github.com/dosgo/libopus/comm/arrayUtil"
 )
 
 func silk_find_pred_coefs(
@@ -26,24 +29,24 @@ func silk_find_pred_coefs(
 	/* weighting for weighted least squares */
 	min_gain_Q16 = math.MaxInt32 >> 6
 	for i = 0; i < psEnc.nb_subfr; i++ {
-		min_gain_Q16 = silk_min(min_gain_Q16, psEncCtrl.Gains_Q16[i])
+		min_gain_Q16 = inlines.Silk_min(min_gain_Q16, psEncCtrl.Gains_Q16[i])
 	}
 	for i = 0; i < psEnc.nb_subfr; i++ {
 		/* Divide to Q16 */
-		OpusAssert(psEncCtrl.Gains_Q16[i] > 0)
+		inlines.OpusAssert(psEncCtrl.Gains_Q16[i] > 0)
 		/* Invert and normalize gains, and ensure that maximum invGains_Q16 is within range of a 16 bit int */
-		invGains_Q16[i] = silk_DIV32_varQ(min_gain_Q16, psEncCtrl.Gains_Q16[i], 16-2)
+		invGains_Q16[i] = inlines.Silk_DIV32_varQ(min_gain_Q16, psEncCtrl.Gains_Q16[i], 16-2)
 
 		/* Ensure Wght_Q15 a minimum value 1 */
-		invGains_Q16[i] = silk_max(invGains_Q16[i], 363)
+		invGains_Q16[i] = inlines.Silk_max(invGains_Q16[i], 363)
 
 		/* Square the inverted gains */
-		OpusAssert(invGains_Q16[i] == silk_SAT16(invGains_Q16[i]))
-		tmp = silk_SMULWB(invGains_Q16[i], invGains_Q16[i])
-		Wght_Q15[i] = silk_RSHIFT(tmp, 1)
+		inlines.OpusAssert(invGains_Q16[i] == inlines.Silk_SAT16(invGains_Q16[i]))
+		tmp = inlines.Silk_SMULWB(invGains_Q16[i], invGains_Q16[i])
+		Wght_Q15[i] = inlines.Silk_RSHIFT(tmp, 1)
 
 		/* Invert the inverted and normalized gains */
-		local_gains[i] = silk_DIV32(int(int32(1)<<16), invGains_Q16[i])
+		local_gains[i] = inlines.Silk_DIV32(int(int32(1)<<16), invGains_Q16[i])
 	}
 
 	LPC_in_pre = make([]int16, psEnc.nb_subfr*psEnc.predictLPCOrder+psEnc.frame_length)
@@ -58,20 +61,20 @@ func silk_find_pred_coefs(
 		/**
 		 * *******
 		 */
-		OpusAssert(psEnc.ltp_mem_length-psEnc.predictLPCOrder >= psEncCtrl.pitchL[0]+SilkConstants.LTP_ORDER/2)
+		inlines.OpusAssert(psEnc.ltp_mem_length-psEnc.predictLPCOrder >= psEncCtrl.pitchL[0]+SilkConstants.LTP_ORDER/2)
 
 		WLTP = make([]int, psEnc.nb_subfr*SilkConstants.LTP_ORDER*SilkConstants.LTP_ORDER)
 
 		/* LTP analysis */
-		boxed_codgain := &BoxedValueInt{psEncCtrl.LTPredCodGain_Q7}
+		boxed_codgain := &comm.BoxedValueInt{psEncCtrl.LTPredCodGain_Q7}
 		silk_find_LTP(psEncCtrl.LTPCoef_Q14, WLTP, boxed_codgain,
 			res_pitch, psEncCtrl.pitchL, Wght_Q15, psEnc.subfr_length,
 			psEnc.nb_subfr, psEnc.ltp_mem_length, LTP_corrs_rshift)
 		psEncCtrl.LTPredCodGain_Q7 = boxed_codgain.Val
 
 		/* Quantize LTP gain parameters */
-		boxed_periodicity := &BoxedValueByte{psEnc.indices.PERIndex}
-		boxed_gain := &BoxedValueInt{psEnc.sum_log_gain_Q7}
+		boxed_periodicity := &comm.BoxedValueByte{psEnc.indices.PERIndex}
+		boxed_gain := &comm.BoxedValueInt{psEnc.sum_log_gain_Q7}
 		silk_quant_LTP_gains(psEncCtrl.LTPCoef_Q14, psEnc.indices.LTPIndex, boxed_periodicity,
 			boxed_gain, WLTP, psEnc.mu_LTP_Q9, psEnc.LTPQuantLowComplexity, psEnc.nb_subfr)
 		psEnc.indices.PERIndex = boxed_periodicity.Val
@@ -97,13 +100,13 @@ func silk_find_pred_coefs(
 		x_ptr2 = x_ptr - psEnc.predictLPCOrder
 		x_pre_ptr = 0
 		for i = 0; i < psEnc.nb_subfr; i++ {
-			silk_scale_copy_vector16(LPC_in_pre, x_pre_ptr, x, x_ptr2, invGains_Q16[i],
+			inlines.Silk_scale_copy_vector16(LPC_in_pre, x_pre_ptr, x, x_ptr2, invGains_Q16[i],
 				psEnc.subfr_length+psEnc.predictLPCOrder)
 			x_pre_ptr += psEnc.subfr_length + psEnc.predictLPCOrder
 			x_ptr2 += psEnc.subfr_length
 		}
 
-		MemSetLen(psEncCtrl.LTPCoef_Q14, 0, psEnc.nb_subfr*SilkConstants.LTP_ORDER)
+		arrayUtil.MemSetLen(psEncCtrl.LTPCoef_Q14, 0, psEnc.nb_subfr*SilkConstants.LTP_ORDER)
 		psEncCtrl.LTPredCodGain_Q7 = 0
 		psEnc.sum_log_gain_Q7 = 0
 	}
@@ -112,11 +115,11 @@ func silk_find_pred_coefs(
 	if psEnc.first_frame_after_reset != 0 {
 		minInvGain_Q30 = int((1.0/float64(SilkConstants.MAX_PREDICTION_POWER_GAIN_AFTER_RESET))*float64(int64(1)<<(30)) + 0.5)
 	} else {
-		minInvGain_Q30 = silk_log2lin(silk_SMLAWB(16<<7, psEncCtrl.LTPredCodGain_Q7, int(math.Trunc((1.0/3)*float64(int64(1)<<(16))+0.5))))
+		minInvGain_Q30 = inlines.Silk_log2lin(inlines.Silk_SMLAWB(16<<7, psEncCtrl.LTPredCodGain_Q7, int(math.Trunc((1.0/3)*float64(int64(1)<<(16))+0.5))))
 		/* Q16 */
-		minInvGain_Q30 = silk_DIV32_varQ(minInvGain_Q30,
-			silk_SMULWW(int(float64(SilkConstants.MAX_PREDICTION_POWER_GAIN)*float64(int64(1)<<(0))+0.5),
-				silk_SMLAWB(int(math.Trunc(0.25*float64(int64(1)<<(18))+0.5)), int(math.Trunc(0.75*float64(int64(1)<<(18))+0.5)), psEncCtrl.coding_quality_Q14)), 14)
+		minInvGain_Q30 = inlines.Silk_DIV32_varQ(minInvGain_Q30,
+			inlines.Silk_SMULWW(int(float64(SilkConstants.MAX_PREDICTION_POWER_GAIN)*float64(int64(1)<<(0))+0.5),
+				inlines.Silk_SMLAWB(int(math.Trunc(0.25*float64(int64(1)<<(18))+0.5)), int(math.Trunc(0.75*float64(int64(1)<<(18))+0.5)), psEncCtrl.coding_quality_Q14)), 14)
 	}
 
 	silk_find_LPC(psEnc, NLSF_Q15, LPC_in_pre, minInvGain_Q30)
