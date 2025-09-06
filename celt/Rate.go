@@ -1,6 +1,8 @@
 package celt
 
-import "github.com/dosgo/libopus/comm"
+import (
+	"github.com/dosgo/libopus/comm"
+)
 
 const ALLOC_STEPS = 6
 
@@ -292,7 +294,7 @@ func interp_bits2pulses(m *CeltMode, start int, end int, skip_start int, bits1 [
 }
 
 func compute_allocation(m *CeltMode, start int, end int, offsets []int, cap []int, alloc_trim int, intensity *comm.BoxedValueInt, dual_stereo *comm.BoxedValueInt, total int, balance *comm.BoxedValueInt, pulses []int, ebits []int, fine_priority []int, C int, LM int, ec *comm.EntropyCoder, encode int, prev int, signalBandwidth int) int {
-	total = inlines.IMIN(total, 0)
+	total = inlines.IMAX(total, 0)
 	len := m.nbEBands
 	skip_start := start
 	skip_rsv := 0
@@ -335,13 +337,12 @@ func compute_allocation(m *CeltMode, start int, end int, offsets []int, cap []in
 		mid := (lo + hi) >> 1
 		for j := end - 1; j >= start; j-- {
 			N := int(m.eBands[j+1] - m.eBands[j])
-
 			bitsj := int(C*N) * int(m.allocVectors[mid*len+j]) << LM >> 2
-
 			if bitsj > 0 {
 				bitsj = inlines.IMAX(0, bitsj+trim_offset[j])
 			}
 			bitsj += offsets[j]
+
 			if bitsj >= thresh[j] || done != 0 {
 				done = 1
 				psum += inlines.IMIN(bitsj, cap[j])
@@ -357,6 +358,7 @@ func compute_allocation(m *CeltMode, start int, end int, offsets []int, cap []in
 	}
 	hi = lo
 	lo = hi - 1
+
 	for j := start; j < end; j++ {
 		N := int(m.eBands[j+1] - m.eBands[j])
 		bits1j := C * N * int(m.allocVectors[lo*len+j]) << LM >> 2
@@ -381,7 +383,6 @@ func compute_allocation(m *CeltMode, start int, end int, offsets []int, cap []in
 		bits1[j] = bits1j
 		bits2[j] = bits2j
 	}
-
 	codedBands := interp_bits2pulses(m, start, end, skip_start, bits1, bits2, thresh, cap, total, balance, skip_rsv, intensity, intensity_rsv, dual_stereo, dual_stereo_rsv, pulses, ebits, fine_priority, C, LM, ec, encode, prev, signalBandwidth)
 	return codedBands
 }
