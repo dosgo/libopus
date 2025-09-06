@@ -270,7 +270,7 @@ func optimize_framesize(x []int16, x_ptr int, len int, C int, Fs int, bitrate in
 	return bestLM
 }
 
-func frame_size_select(frame_size int, variable_duration OpusFramesize, Fs int) int {
+func frame_size_select(frame_size int, variable_duration int, Fs int) int {
 	var new_size int
 	if frame_size < Fs/400 {
 		return -1
@@ -295,7 +295,7 @@ func frame_size_select(frame_size int, variable_duration OpusFramesize, Fs int) 
 	return new_size
 }
 
-func compute_frame_size(analysis_pcm []int16, analysis_pcm_ptr int, frame_size int, variable_duration OpusFramesize, C int, Fs int, bitrate_bps int, delay_compensation int, subframe_mem []float32, analysis_enabled bool) int {
+func compute_frame_size(analysis_pcm []int16, analysis_pcm_ptr int, frame_size int, variable_duration int, C int, Fs int, bitrate_bps int, delay_compensation int, subframe_mem []float32, analysis_enabled bool) int {
 	if analysis_enabled && variable_duration == celt.OPUS_FRAMESIZE_VARIABLE && frame_size >= Fs/200 {
 		LM := 3
 		LM = optimize_framesize(analysis_pcm, analysis_pcm_ptr, frame_size, C, Fs, bitrate_bps, 0, subframe_mem, delay_compensation)

@@ -49,7 +49,7 @@ func silk_prefilter(
 	x []int16,
 	x_ptr int) {
 
-	P := psEnc.sPrefilt
+	P := psEnc.SPrefilt
 	var j, k, lag int
 	var tmp_32 int
 	var AR1_shp_Q13 int
@@ -69,7 +69,7 @@ func silk_prefilter(
 	st_res_Q2 = make([]int, psEnc.subfr_length)
 	for k = 0; k < psEnc.nb_subfr; k++ {
 		/* Update Variables that change per sub frame */
-		if psEnc.indices.signalType == TYPE_VOICED {
+		if psEnc.indices.SignalType == TYPE_VOICED {
 			lag = psEncCtrl.pitchL[k]
 		}
 

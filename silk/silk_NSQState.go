@@ -58,11 +58,11 @@ type SilkNSQState struct {
 	sLPC_Q14         [MAX_SUB_FRAME_LENGTH + 32]int
 	sAR2_Q14         [MAX_SHAPE_LPC_ORDER]int
 	sLF_AR_shp_Q14   int
-	lagPrev          int
+	LagPrev          int
 	sLTP_buf_idx     int
 	sLTP_shp_buf_idx int
 	rand_seed        int
-	prev_gain_Q16    int
+	Prev_gain_Q16    int
 	rewhite_flag     int
 }
 
@@ -83,21 +83,21 @@ func (s *SilkNSQState) Reset() {
 		s.sAR2_Q14[i] = 0
 	}
 	s.sLF_AR_shp_Q14 = 0
-	s.lagPrev = 0
+	s.LagPrev = 0
 	s.sLTP_buf_idx = 0
 	s.sLTP_shp_buf_idx = 0
 	s.rand_seed = 0
-	s.prev_gain_Q16 = 0
+	s.Prev_gain_Q16 = 0
 	s.rewhite_flag = 0
 }
 
 func (s *SilkNSQState) Assign(other *SilkNSQState) {
 	s.sLF_AR_shp_Q14 = other.sLF_AR_shp_Q14
-	s.lagPrev = other.lagPrev
+	s.LagPrev = other.LagPrev
 	s.sLTP_buf_idx = other.sLTP_buf_idx
 	s.sLTP_shp_buf_idx = other.sLTP_shp_buf_idx
 	s.rand_seed = other.rand_seed
-	s.prev_gain_Q16 = other.prev_gain_Q16
+	s.Prev_gain_Q16 = other.Prev_gain_Q16
 	s.rewhite_flag = other.rewhite_flag
 	copy(s.xq[:], other.xq[:])
 	copy(s.sLTP_shp_Q14[:], other.sLTP_shp_Q14[:])
@@ -134,11 +134,11 @@ func (s *SilkNSQState) silk_NSQ(
 
 	s.rand_seed = int(psIndices.Seed)
 
-	lag = s.lagPrev
+	lag = s.LagPrev
 
-	inlines.OpusAssert(s.prev_gain_Q16 != 0)
+	inlines.OpusAssert(s.Prev_gain_Q16 != 0)
 
-	offset_Q10 = int(silk_Quantization_Offsets_Q10[psIndices.signalType>>1][psIndices.quantOffsetType])
+	offset_Q10 = int(silk_Quantization_Offsets_Q10[psIndices.SignalType>>1][psIndices.QuantOffsetType])
 
 	if psIndices.NLSFInterpCoef_Q2 == 4 {
 		LSF_interpolation_flag = 0
@@ -146,8 +146,8 @@ func (s *SilkNSQState) silk_NSQ(
 		LSF_interpolation_flag = 1
 	}
 
-	sLTP_Q15 = make([]int, psEncC.ltp_mem_length+psEncC.frame_length)
-	sLTP = make([]int16, psEncC.ltp_mem_length+psEncC.frame_length)
+	sLTP_Q15 = make([]int, psEncC.ltp_mem_length+psEncC.Frame_length)
+	sLTP = make([]int16, psEncC.ltp_mem_length+psEncC.Frame_length)
 	x_sc_Q10 = make([]int, psEncC.subfr_length)
 	s.sLTP_shp_buf_idx = psEncC.ltp_mem_length
 	s.sLTP_buf_idx = psEncC.ltp_mem_length
@@ -162,7 +162,7 @@ func (s *SilkNSQState) silk_NSQ(
 		HarmShapeFIRPacked_Q14 |= inlines.Silk_LSHIFT(int(inlines.Silk_RSHIFT(HarmShapeGain_Q14[k], 1)), 16)
 
 		s.rewhite_flag = 0
-		if psIndices.signalType == TYPE_VOICED {
+		if psIndices.SignalType == TYPE_VOICED {
 			lag = pitchL[k]
 
 			if (k & (3 - inlines.Silk_LSHIFT(LSF_interpolation_flag, 1))) == 0 {
@@ -176,10 +176,10 @@ func (s *SilkNSQState) silk_NSQ(
 			}
 		}
 
-		s.silk_nsq_scale_states(psEncC, x_Q3, x_Q3_ptr, x_sc_Q10, sLTP, sLTP_Q15, k, LTP_scale_Q14, Gains_Q16, pitchL, int(psIndices.signalType))
+		s.silk_nsq_scale_states(psEncC, x_Q3, x_Q3_ptr, x_sc_Q10, sLTP, sLTP_Q15, k, LTP_scale_Q14, Gains_Q16, pitchL, int(psIndices.SignalType))
 
 		s.silk_noise_shape_quantizer(
-			int(psIndices.signalType),
+			int(psIndices.SignalType),
 			x_sc_Q10,
 			pulses,
 			pulses_ptr,
@@ -208,10 +208,10 @@ func (s *SilkNSQState) silk_NSQ(
 		pxq += psEncC.subfr_length
 	}
 
-	s.lagPrev = pitchL[psEncC.nb_subfr-1]
+	s.LagPrev = pitchL[psEncC.nb_subfr-1]
 
-	copy(s.xq[:psEncC.ltp_mem_length], s.xq[psEncC.frame_length:psEncC.frame_length+psEncC.ltp_mem_length])
-	copy(s.sLTP_shp_Q14[:psEncC.ltp_mem_length], s.sLTP_shp_Q14[psEncC.frame_length:psEncC.frame_length+psEncC.ltp_mem_length])
+	copy(s.xq[:psEncC.ltp_mem_length], s.xq[psEncC.Frame_length:psEncC.Frame_length+psEncC.ltp_mem_length])
+	copy(s.sLTP_shp_Q14[:psEncC.ltp_mem_length], s.sLTP_shp_Q14[psEncC.Frame_length:psEncC.Frame_length+psEncC.ltp_mem_length])
 }
 
 func (s *SilkNSQState) silk_noise_shape_quantizer(
@@ -450,8 +450,8 @@ func (s *SilkNSQState) silk_nsq_scale_states(
 	inlines.OpusAssert(inv_gain_Q31 != 0)
 
 	/* Calculate gain adjustment factor */
-	if Gains_Q16[subfr] != s.prev_gain_Q16 {
-		gain_adj_Q16 = inlines.Silk_DIV32_varQ(s.prev_gain_Q16, Gains_Q16[subfr], 16)
+	if Gains_Q16[subfr] != s.Prev_gain_Q16 {
+		gain_adj_Q16 = inlines.Silk_DIV32_varQ(s.Prev_gain_Q16, Gains_Q16[subfr], 16)
 	} else {
 		gain_adj_Q16 = int(int32(1) << 16)
 	}
@@ -463,7 +463,7 @@ func (s *SilkNSQState) silk_nsq_scale_states(
 	}
 
 	/* Save inverse gain */
-	s.prev_gain_Q16 = Gains_Q16[subfr]
+	s.Prev_gain_Q16 = Gains_Q16[subfr]
 
 	/* After rewhitening the LTP state is un-scaled, so scale with inv_gain_Q16 */
 	if s.rewhite_flag != 0 {
@@ -535,8 +535,8 @@ func (s *SilkNSQState) silk_NSQ_del_dec(
 	var psDelDec []*NSQ_del_dec_struct
 	var psDD *NSQ_del_dec_struct
 
-	lag = s.lagPrev
-	inlines.OpusAssert(s.prev_gain_Q16 != 0)
+	lag = s.LagPrev
+	inlines.OpusAssert(s.Prev_gain_Q16 != 0)
 
 	psDelDec = make([]*NSQ_del_dec_struct, psEncC.nStatesDelayedDecision)
 	for c := range psDelDec {
@@ -557,11 +557,11 @@ func (s *SilkNSQState) silk_NSQ_del_dec(
 		copy(psDD.sAR2_Q14, s.sAR2_Q14[:])
 	}
 
-	offset_Q10 = int(silk_Quantization_Offsets_Q10[psIndices.signalType>>1][psIndices.quantOffsetType])
+	offset_Q10 = int(silk_Quantization_Offsets_Q10[psIndices.SignalType>>1][psIndices.QuantOffsetType])
 	smpl_buf_idx = 0
 	decisionDelay = inlines.Silk_min_int(DECISION_DELAY, psEncC.subfr_length)
 
-	if psIndices.signalType == TYPE_VOICED {
+	if psIndices.SignalType == TYPE_VOICED {
 		for k = 0; k < psEncC.nb_subfr; k++ {
 			decisionDelay = inlines.Silk_min_int(decisionDelay, pitchL[k]-LTP_ORDER/2-1)
 		}
@@ -575,8 +575,8 @@ func (s *SilkNSQState) silk_NSQ_del_dec(
 		LSF_interpolation_flag = 1
 	}
 
-	sLTP_Q15 = make([]int, psEncC.ltp_mem_length+psEncC.frame_length)
-	sLTP = make([]int16, psEncC.ltp_mem_length+psEncC.frame_length)
+	sLTP_Q15 = make([]int, psEncC.ltp_mem_length+psEncC.Frame_length)
+	sLTP = make([]int16, psEncC.ltp_mem_length+psEncC.Frame_length)
 	x_sc_Q10 = make([]int, psEncC.subfr_length)
 	delayedGain_Q10 = make([]int, DECISION_DELAY)
 	pxq = psEncC.ltp_mem_length
@@ -591,7 +591,7 @@ func (s *SilkNSQState) silk_NSQ_del_dec(
 		HarmShapeFIRPacked_Q14 |= inlines.Silk_LSHIFT(int(inlines.Silk_RSHIFT(HarmShapeGain_Q14[k], 1)), 16)
 
 		s.rewhite_flag = 0
-		if psIndices.signalType == TYPE_VOICED {
+		if psIndices.SignalType == TYPE_VOICED {
 			lag = pitchL[k]
 
 			if (k & (3 - inlines.Silk_LSHIFT(LSF_interpolation_flag, 1))) == 0 {
@@ -633,10 +633,10 @@ func (s *SilkNSQState) silk_NSQ_del_dec(
 			}
 		}
 
-		s.silk_nsq_del_dec_scale_states(psEncC, psDelDec, x_Q3, x_Q3_ptr, x_sc_Q10, sLTP, sLTP_Q15, k, psEncC.nStatesDelayedDecision, LTP_scale_Q14, Gains_Q16, pitchL, int(psIndices.signalType), decisionDelay)
+		s.silk_nsq_del_dec_scale_states(psEncC, psDelDec, x_Q3, x_Q3_ptr, x_sc_Q10, sLTP, sLTP_Q15, k, psEncC.nStatesDelayedDecision, LTP_scale_Q14, Gains_Q16, pitchL, int(psIndices.SignalType), decisionDelay)
 
 		smpl_buf_idx_boxed := &comm.BoxedValueInt{Val: smpl_buf_idx}
-		s.silk_noise_shape_quantizer_del_dec(psDelDec, int(psIndices.signalType), x_sc_Q10, pulses, pulses_ptr, s.xq[:], pxq, sLTP_Q15, delayedGain_Q10, PredCoef_Q12[A_Q12], LTPCoef_Q14, k*LTP_ORDER, AR2_Q13, k*MAX_SHAPE_LPC_ORDER, lag, HarmShapeFIRPacked_Q14, Tilt_Q14[k], LF_shp_Q14[k], Gains_Q16[k], Lambda_Q10, offset_Q10, psEncC.subfr_length, subfr, psEncC.shapingLPCOrder, psEncC.predictLPCOrder, psEncC.warping_Q16, psEncC.nStatesDelayedDecision, smpl_buf_idx_boxed, decisionDelay)
+		s.silk_noise_shape_quantizer_del_dec(psDelDec, int(psIndices.SignalType), x_sc_Q10, pulses, pulses_ptr, s.xq[:], pxq, sLTP_Q15, delayedGain_Q10, PredCoef_Q12[A_Q12], LTPCoef_Q14, k*LTP_ORDER, AR2_Q13, k*MAX_SHAPE_LPC_ORDER, lag, HarmShapeFIRPacked_Q14, Tilt_Q14[k], LF_shp_Q14[k], Gains_Q16[k], Lambda_Q10, offset_Q10, psEncC.subfr_length, subfr, psEncC.shapingLPCOrder, psEncC.predictLPCOrder, psEncC.warping_Q16, psEncC.nStatesDelayedDecision, smpl_buf_idx_boxed, decisionDelay)
 		smpl_buf_idx = smpl_buf_idx_boxed.Val
 
 		x_Q3_ptr += psEncC.subfr_length
@@ -668,10 +668,10 @@ func (s *SilkNSQState) silk_NSQ_del_dec(
 	copy(s.sAR2_Q14[:], psDD.sAR2_Q14)
 
 	s.sLF_AR_shp_Q14 = psDD.LF_AR_Q14
-	s.lagPrev = pitchL[psEncC.nb_subfr-1]
+	s.LagPrev = pitchL[psEncC.nb_subfr-1]
 
-	copy(s.xq[:psEncC.ltp_mem_length], s.xq[psEncC.frame_length:psEncC.frame_length+psEncC.ltp_mem_length])
-	copy(s.sLTP_shp_Q14[:psEncC.ltp_mem_length], s.sLTP_shp_Q14[psEncC.frame_length:psEncC.frame_length+psEncC.ltp_mem_length])
+	copy(s.xq[:psEncC.ltp_mem_length], s.xq[psEncC.Frame_length:psEncC.Frame_length+psEncC.ltp_mem_length])
+	copy(s.sLTP_shp_Q14[:psEncC.ltp_mem_length], s.sLTP_shp_Q14[psEncC.Frame_length:psEncC.Frame_length+psEncC.ltp_mem_length])
 }
 
 func (s *SilkNSQState) silk_noise_shape_quantizer_del_dec(
@@ -978,8 +978,8 @@ func (s *SilkNSQState) silk_nsq_del_dec_scale_states(
 	inv_gain_Q31 = inlines.Silk_INVERSE32_varQ(inlines.Silk_max(Gains_Q16[subfr], 1), 47)
 	inlines.OpusAssert(inv_gain_Q31 != 0)
 
-	if Gains_Q16[subfr] != s.prev_gain_Q16 {
-		gain_adj_Q16 = inlines.Silk_DIV32_varQ(s.prev_gain_Q16, Gains_Q16[subfr], 16)
+	if Gains_Q16[subfr] != s.Prev_gain_Q16 {
+		gain_adj_Q16 = inlines.Silk_DIV32_varQ(s.Prev_gain_Q16, Gains_Q16[subfr], 16)
 	} else {
 		gain_adj_Q16 = 1 << 16
 	}
@@ -989,7 +989,7 @@ func (s *SilkNSQState) silk_nsq_del_dec_scale_states(
 		x_sc_Q10[i] = inlines.Silk_SMULWW(x_Q3[x_Q3_ptr+i], inv_gain_Q23)
 	}
 
-	s.prev_gain_Q16 = Gains_Q16[subfr]
+	s.Prev_gain_Q16 = Gains_Q16[subfr]
 
 	if s.rewhite_flag != 0 {
 		if subfr == 0 {

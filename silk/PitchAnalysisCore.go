@@ -22,10 +22,6 @@ const (
 	D_COMP_STRIDE  = D_COMP_MAX - D_COMP_MIN
 )
 
-type silk_pe_stage3_vals struct {
-	Values [PE_NB_STAGE3_LAGS]int
-}
-
 func silk_pitch_analysis_core(frame []int16, pitch_out []int, lagIndex *comm.BoxedValueShort, contourIndex *comm.BoxedValueByte, LTPCorr_Q15 *comm.BoxedValueInt, prevLag int, search_thres1_Q16 int, search_thres2_Q13 int, Fs_kHz int, complexity int, nb_subfr int) int {
 
 	var frame_8kHz []int16
@@ -477,11 +473,11 @@ func silk_pitch_analysis_core(frame []int16, pitch_out []int, lagIndex *comm.Box
 		}
 
 		/* Calculate the correlations and energies needed in stage 3 */
-		energies_st3 := make([]*silk_pe_stage3_vals, nb_subfr*nb_cbk_search)
-		cross_corr_st3 := make([]*silk_pe_stage3_vals, nb_subfr*nb_cbk_search)
+		energies_st3 := make([]*comm.Silk_pe_stage3_vals, nb_subfr*nb_cbk_search)
+		cross_corr_st3 := make([]*comm.Silk_pe_stage3_vals, nb_subfr*nb_cbk_search)
 		for c := 0; c < nb_subfr*nb_cbk_search; c++ {
-			energies_st3[c] = &silk_pe_stage3_vals{} // fixme: these can be replaced with a linearized array probably, or at least a struct
-			cross_corr_st3[c] = &silk_pe_stage3_vals{}
+			energies_st3[c] = &comm.Silk_pe_stage3_vals{} // fixme: these can be replaced with a linearized array probably, or at least a struct
+			cross_corr_st3[c] = &comm.Silk_pe_stage3_vals{}
 		}
 		silk_P_Ana_calc_corr_st3(cross_corr_st3, input_frame_ptr, start_lag, sf_length, nb_subfr, complexity)
 		silk_P_Ana_calc_energy_st3(energies_st3, input_frame_ptr, start_lag, sf_length, nb_subfr, complexity)
@@ -550,7 +546,7 @@ func silk_pitch_analysis_core(frame []int16, pitch_out []int, lagIndex *comm.Box
 	return 0
 }
 
-func silk_P_Ana_calc_corr_st3(cross_corr_st3 []*silk_pe_stage3_vals, frame []int16, start_lag int, sf_length int, nb_subfr int, complexity int) {
+func silk_P_Ana_calc_corr_st3(cross_corr_st3 []*comm.Silk_pe_stage3_vals, frame []int16, start_lag int, sf_length int, nb_subfr int, complexity int) {
 	var target_ptr int
 	var i, j, k, lag_counter, lag_low, lag_high int
 	var nb_cbk_search, delta, idx int
@@ -590,7 +586,7 @@ func silk_P_Ana_calc_corr_st3(cross_corr_st3 []*silk_pe_stage3_vals, frame []int
 	}
 }
 
-func silk_P_Ana_calc_energy_st3(energies_st3 []*silk_pe_stage3_vals, frame []int16, start_lag int, sf_length int, nb_subfr int, complexity int) {
+func silk_P_Ana_calc_energy_st3(energies_st3 []*comm.Silk_pe_stage3_vals, frame []int16, start_lag int, sf_length int, nb_subfr int, complexity int) {
 	var target_ptr, basis_ptr int
 	var energy int
 	var k, i, j, lag_counter int

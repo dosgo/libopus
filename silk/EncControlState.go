@@ -1,56 +1,56 @@
 package silk
 
 type EncControlState struct {
-	nChannelsAPI              int
-	nChannelsInternal         int
+	NChannelsAPI              int
+	NChannelsInternal         int
 	API_sampleRate            int
-	maxInternalSampleRate     int
-	minInternalSampleRate     int
-	desiredInternalSampleRate int
-	payloadSize_ms            int
+	MaxInternalSampleRate     int
+	MinInternalSampleRate     int
+	DesiredInternalSampleRate int
+	PayloadSize_ms            int
 	BitRate                   int
-	packetLossPercentage      int
-	complexity                int
+	PacketLossPercentage      int
+	Complexity                int
 	UseInBandFEC              int
 	UseDTX                    int
 	UseCBR                    int
-	maxBits                   int
-	toMono                    int
-	opusCanSwitch             int
-	reducedDependency         int
-	internalSampleRate        int
-	allowBandwidthSwitch      int
-	inWBmodeWithoutVariableLP int
-	stereoWidth_Q14           int
-	switchReady               int
+	MaxBits                   int
+	ToMono                    int
+	OpusCanSwitch             int
+	ReducedDependency         int
+	InternalSampleRate        int
+	AllowBandwidthSwitch      int
+	InWBmodeWithoutVariableLP int
+	StereoWidth_Q14           int
+	SwitchReady               int
 }
 
 func (s *EncControlState) Reset() {
-	s.nChannelsAPI = 0
-	s.nChannelsInternal = 0
+	s.NChannelsAPI = 0
+	s.NChannelsInternal = 0
 	s.API_sampleRate = 0
-	s.maxInternalSampleRate = 0
-	s.minInternalSampleRate = 0
-	s.desiredInternalSampleRate = 0
-	s.payloadSize_ms = 0
+	s.MaxInternalSampleRate = 0
+	s.MinInternalSampleRate = 0
+	s.DesiredInternalSampleRate = 0
+	s.PayloadSize_ms = 0
 	s.BitRate = 0
-	s.packetLossPercentage = 0
-	s.complexity = 0
+	s.PacketLossPercentage = 0
+	s.Complexity = 0
 	s.UseInBandFEC = 0
 	s.UseDTX = 0
 	s.UseCBR = 0
-	s.maxBits = 0
-	s.toMono = 0
-	s.opusCanSwitch = 0
-	s.reducedDependency = 0
-	s.internalSampleRate = 0
-	s.allowBandwidthSwitch = 0
-	s.inWBmodeWithoutVariableLP = 0
-	s.stereoWidth_Q14 = 0
-	s.switchReady = 0
+	s.MaxBits = 0
+	s.ToMono = 0
+	s.OpusCanSwitch = 0
+	s.ReducedDependency = 0
+	s.InternalSampleRate = 0
+	s.AllowBandwidthSwitch = 0
+	s.InWBmodeWithoutVariableLP = 0
+	s.StereoWidth_Q14 = 0
+	s.SwitchReady = 0
 }
 
-func (s *EncControlState) check_control_input() int {
+func (s *EncControlState) Check_control_input() int {
 	if ((s.API_sampleRate != 8000) &&
 		(s.API_sampleRate != 12000) &&
 		(s.API_sampleRate != 16000) &&
@@ -58,29 +58,29 @@ func (s *EncControlState) check_control_input() int {
 		(s.API_sampleRate != 32000) &&
 		(s.API_sampleRate != 44100) &&
 		(s.API_sampleRate != 48000)) ||
-		((s.desiredInternalSampleRate != 8000) &&
-			(s.desiredInternalSampleRate != 12000) &&
-			(s.desiredInternalSampleRate != 16000)) ||
-		((s.maxInternalSampleRate != 8000) &&
-			(s.maxInternalSampleRate != 12000) &&
-			(s.maxInternalSampleRate != 16000)) ||
-		((s.minInternalSampleRate != 8000) &&
-			(s.minInternalSampleRate != 12000) &&
-			(s.minInternalSampleRate != 16000)) ||
-		(s.minInternalSampleRate > s.desiredInternalSampleRate) ||
-		(s.maxInternalSampleRate < s.desiredInternalSampleRate) ||
-		(s.minInternalSampleRate > s.maxInternalSampleRate) {
+		((s.DesiredInternalSampleRate != 8000) &&
+			(s.DesiredInternalSampleRate != 12000) &&
+			(s.DesiredInternalSampleRate != 16000)) ||
+		((s.MaxInternalSampleRate != 8000) &&
+			(s.MaxInternalSampleRate != 12000) &&
+			(s.MaxInternalSampleRate != 16000)) ||
+		((s.MinInternalSampleRate != 8000) &&
+			(s.MinInternalSampleRate != 12000) &&
+			(s.MinInternalSampleRate != 16000)) ||
+		(s.MinInternalSampleRate > s.DesiredInternalSampleRate) ||
+		(s.MaxInternalSampleRate < s.DesiredInternalSampleRate) ||
+		(s.MinInternalSampleRate > s.MaxInternalSampleRate) {
 		inlines.OpusAssert(false)
 		return SilkError.SILK_ENC_FS_NOT_SUPPORTED
 	}
-	if s.payloadSize_ms != 10 &&
-		s.payloadSize_ms != 20 &&
-		s.payloadSize_ms != 40 &&
-		s.payloadSize_ms != 60 {
+	if s.PayloadSize_ms != 10 &&
+		s.PayloadSize_ms != 20 &&
+		s.PayloadSize_ms != 40 &&
+		s.PayloadSize_ms != 60 {
 		inlines.OpusAssert(false)
 		return SilkError.SILK_ENC_PACKET_SIZE_NOT_SUPPORTED
 	}
-	if s.packetLossPercentage < 0 || s.packetLossPercentage > 100 {
+	if s.PacketLossPercentage < 0 || s.PacketLossPercentage > 100 {
 		inlines.OpusAssert(false)
 		return SilkError.SILK_ENC_INVALID_LOSS_RATE
 	}
@@ -96,19 +96,19 @@ func (s *EncControlState) check_control_input() int {
 		inlines.OpusAssert(false)
 		return SilkError.SILK_ENC_INVALID_INBAND_FEC_SETTING
 	}
-	if s.nChannelsAPI < 1 || s.nChannelsAPI > SilkConstants.ENCODER_NUM_CHANNELS {
+	if s.NChannelsAPI < 1 || s.NChannelsAPI > SilkConstants.ENCODER_NUM_CHANNELS {
 		inlines.OpusAssert(false)
 		return SilkError.SILK_ENC_INVALID_NUMBER_OF_CHANNELS_ERROR
 	}
-	if s.nChannelsInternal < 1 || s.nChannelsInternal > SilkConstants.ENCODER_NUM_CHANNELS {
+	if s.NChannelsInternal < 1 || s.NChannelsInternal > SilkConstants.ENCODER_NUM_CHANNELS {
 		inlines.OpusAssert(false)
 		return SilkError.SILK_ENC_INVALID_NUMBER_OF_CHANNELS_ERROR
 	}
-	if s.nChannelsInternal > s.nChannelsAPI {
+	if s.NChannelsInternal > s.NChannelsAPI {
 		inlines.OpusAssert(false)
 		return SilkError.SILK_ENC_INVALID_NUMBER_OF_CHANNELS_ERROR
 	}
-	if s.complexity < 0 || s.complexity > 10 {
+	if s.Complexity < 0 || s.Complexity > 10 {
 		inlines.OpusAssert(false)
 		return SilkError.SILK_ENC_INVALID_COMPLEXITY_SETTING
 	}

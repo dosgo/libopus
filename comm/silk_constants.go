@@ -444,3 +444,7 @@ const (
 	RESAMPLER_MAX_BATCH_SIZE_IN                   = RESAMPLER_MAX_BATCH_SIZE_MS * RESAMPLER_MAX_FS_KHZ
 	SILK_MAX_FRAMES_PER_PACKET                    = 3
 )
+
+type Silk_pe_stage3_vals struct {
+	Values [PE_NB_STAGE3_LAGS]int
+}

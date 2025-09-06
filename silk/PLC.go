@@ -21,7 +21,7 @@ func shortMemSet(a []int16, v int16, n int) {
 }
 
 func silk_PLC_Reset(psDec *SilkChannelDecoder) {
-	psDec.sPLC.pitchL_Q8 = inlines.Silk_LSHIFT(psDec.frame_length, 8-1)
+	psDec.sPLC.pitchL_Q8 = inlines.Silk_LSHIFT(psDec.Frame_length, 8-1)
 	psDec.sPLC.prevGain_Q16[0] = 1 << 16
 	psDec.sPLC.prevGain_Q16[1] = 1 << 16
 	psDec.sPLC.subfr_length = 20
@@ -29,9 +29,9 @@ func silk_PLC_Reset(psDec *SilkChannelDecoder) {
 }
 
 func silk_PLC(psDec *SilkChannelDecoder, psDecCtrl *SilkDecoderControl, frame []int16, frame_ptr int, lost int) {
-	if psDec.fs_kHz != psDec.sPLC.fs_kHz {
+	if psDec.Fs_kHz != psDec.sPLC.fs_kHz {
 		silk_PLC_Reset(psDec)
-		psDec.sPLC.fs_kHz = psDec.fs_kHz
+		psDec.sPLC.fs_kHz = psDec.Fs_kHz
 	}
 
 	if lost != 0 {
@@ -47,19 +47,19 @@ func silk_PLC_update(psDec *SilkChannelDecoder, psDecCtrl *SilkDecoderControl) {
 	LTP_Gain_Q14 := 0
 	temp_LTP_Gain_Q14 := 0
 
-	if psDec.indices.signalType == TYPE_VOICED {
-		for j := 0; j*psDec.subfr_length < int(psDecCtrl.pitchL[psDec.nb_subfr-1]); j++ {
-			if j == psDec.nb_subfr {
+	if psDec.Indices.SignalType == TYPE_VOICED {
+		for j := 0; j*psDec.subfr_length < int(psDecCtrl.pitchL[psDec.Nb_subfr-1]); j++ {
+			if j == psDec.Nb_subfr {
 				break
 			}
 			temp_LTP_Gain_Q14 = 0
 			for i := 0; i < LTP_ORDER; i++ {
-				temp_LTP_Gain_Q14 += int(psDecCtrl.LTPCoef_Q14[(psDec.nb_subfr-1-j)*LTP_ORDER+i])
+				temp_LTP_Gain_Q14 += int(psDecCtrl.LTPCoef_Q14[(psDec.Nb_subfr-1-j)*LTP_ORDER+i])
 			}
 			if temp_LTP_Gain_Q14 > LTP_Gain_Q14 {
 				LTP_Gain_Q14 = temp_LTP_Gain_Q14
-				copy(psPLC.LTPCoef_Q14[:], psDecCtrl.LTPCoef_Q14[(psDec.nb_subfr-1-j)*LTP_ORDER:])
-				psPLC.pitchL_Q8 = inlines.Silk_LSHIFT(psDecCtrl.pitchL[psDec.nb_subfr-1-j], 8)
+				copy(psPLC.LTPCoef_Q14[:], psDecCtrl.LTPCoef_Q14[(psDec.Nb_subfr-1-j)*LTP_ORDER:])
+				psPLC.pitchL_Q8 = inlines.Silk_LSHIFT(psDecCtrl.pitchL[psDec.Nb_subfr-1-j], 8)
 			}
 		}
 
@@ -82,7 +82,7 @@ func silk_PLC_update(psDec *SilkChannelDecoder, psDecCtrl *SilkDecoderControl) {
 			}
 		}
 	} else {
-		psPLC.pitchL_Q8 = inlines.Silk_LSHIFT(int(inlines.Silk_SMULBB(int(psDec.fs_kHz), 18)), 8)
+		psPLC.pitchL_Q8 = inlines.Silk_LSHIFT(int(inlines.Silk_SMULBB(int(psDec.Fs_kHz), 18)), 8)
 		for i := range psPLC.LTPCoef_Q14 {
 			psPLC.LTPCoef_Q14[i] = 0
 		}
@@ -90,9 +90,9 @@ func silk_PLC_update(psDec *SilkChannelDecoder, psDecCtrl *SilkDecoderControl) {
 
 	copy(psPLC.prevLPC_Q12[:], psDecCtrl.PredCoef_Q12[1][:psDec.LPC_order])
 	psPLC.prevLTP_scale_Q14 = int16(psDecCtrl.LTP_scale_Q14)
-	copy(psPLC.prevGain_Q16[:], psDecCtrl.Gains_Q16[psDec.nb_subfr-2:])
+	copy(psPLC.prevGain_Q16[:], psDecCtrl.Gains_Q16[psDec.Nb_subfr-2:])
 	psPLC.subfr_length = psDec.subfr_length
-	psPLC.nb_subfr = psDec.nb_subfr
+	psPLC.nb_subfr = psDec.Nb_subfr
 }
 
 func silk_PLC_energy(energy1, shift1, energy2, shift2 *comm.BoxedValueInt, exc_Q14 []int, prevGain_Q10 []int, subfr_length, nb_subfr int) {
@@ -117,7 +117,7 @@ func silk_PLC_conceal(psDec *SilkChannelDecoder, psDecCtrl *SilkDecoderControl, 
 		inlines.Silk_RSHIFT(psPLC.prevGain_Q16[1], 6),
 	}
 
-	if psDec.first_frame_after_reset != 0 {
+	if psDec.First_frame_after_reset != 0 {
 		for i := range psPLC.prevLPC_Q12 {
 			psPLC.prevLPC_Q12[i] = 0
 		}
@@ -129,8 +129,8 @@ func silk_PLC_conceal(psDec *SilkChannelDecoder, psDecCtrl *SilkDecoderControl, 
 	shift2 := comm.BoxedValueInt{0}
 	sLTP := make([]int16, psDec.ltp_mem_length)
 
-	sLTP_Q14 := make([]int, psDec.ltp_mem_length+psDec.frame_length)
-	silk_PLC_energy(&energy1, &shift1, &energy2, &shift2, psDec.exc_Q14, prevGain_Q10[:], psDec.subfr_length, psDec.nb_subfr)
+	sLTP_Q14 := make([]int, psDec.ltp_mem_length+psDec.Frame_length)
+	silk_PLC_energy(&energy1, &shift1, &energy2, &shift2, psDec.exc_Q14, prevGain_Q10[:], psDec.subfr_length, psDec.Nb_subfr)
 
 	rand_ptr := 0
 	if inlines.Silk_RSHIFT(energy1.Val, (shift2.Val)) < inlines.Silk_RSHIFT(energy2.Val, int(shift1.Val)) {
@@ -143,7 +143,7 @@ func silk_PLC_conceal(psDec *SilkChannelDecoder, psDecCtrl *SilkDecoderControl, 
 	rand_scale_Q14 := psPLC.randScale_Q14
 	harm_Gain_Q15 := int(HARM_ATT_Q15[inlines.Silk_min_int(NB_ATT-1, psDec.lossCnt)])
 	rand_Gain_Q15 := int(0)
-	if psDec.prevSignalType == TYPE_VOICED {
+	if psDec.PrevSignalType == TYPE_VOICED {
 		rand_Gain_Q15 = int(PLC_RAND_ATTENUATE_V_Q15[inlines.Silk_min_int(NB_ATT-1, psDec.lossCnt)])
 	} else {
 		rand_Gain_Q15 = int(PLC_RAND_ATTENUATE_UV_Q15[inlines.Silk_min_int(NB_ATT-1, psDec.lossCnt)])
@@ -154,7 +154,7 @@ func silk_PLC_conceal(psDec *SilkChannelDecoder, psDecCtrl *SilkDecoderControl, 
 
 	if psDec.lossCnt == 0 {
 		rand_scale_Q14 = 1 << 14
-		if psDec.prevSignalType == TYPE_VOICED {
+		if psDec.PrevSignalType == TYPE_VOICED {
 			sum := int(0)
 			for i := 0; i < LTP_ORDER; i++ {
 				sum += int(B_Q14[i])
@@ -176,14 +176,14 @@ func silk_PLC_conceal(psDec *SilkChannelDecoder, psDecCtrl *SilkDecoderControl, 
 	sLTP_buf_idx := psDec.ltp_mem_length
 
 	idx := psDec.ltp_mem_length - lag - psDec.LPC_order - LTP_ORDER/2
-	silk_LPC_analysis_filter(sLTP[:], idx, psDec.outBuf, idx, psPLC.prevLPC_Q12[:], 0, psDec.ltp_mem_length-idx, psDec.LPC_order)
+	silk_LPC_analysis_filter(sLTP[:], idx, psDec.OutBuf, idx, psPLC.prevLPC_Q12[:], 0, psDec.ltp_mem_length-idx, psDec.LPC_order)
 	inv_gain_Q30 := inlines.Silk_INVERSE32_varQ(psPLC.prevGain_Q16[1], 46)
 	inv_gain_Q30 = inlines.Silk_min_32(inv_gain_Q30, 0x7FFFFFFF)
 	for i := idx + psDec.LPC_order; i < psDec.ltp_mem_length; i++ {
 		sLTP_Q14[i] = inlines.Silk_SMULWB(inv_gain_Q30, int(sLTP[i]))
 	}
 
-	for k := 0; k < psDec.nb_subfr; k++ {
+	for k := 0; k < psDec.Nb_subfr; k++ {
 		pred_lag_ptr := sLTP_buf_idx - lag + LTP_ORDER/2
 		for i := 0; i < psDec.subfr_length; i++ {
 			LTP_pred_Q12 := int(2)
@@ -205,14 +205,14 @@ func silk_PLC_conceal(psDec *SilkChannelDecoder, psDecCtrl *SilkDecoderControl, 
 		}
 		rand_scale_Q14 = int16(inlines.Silk_RSHIFT(inlines.Silk_SMULWW(int(rand_scale_Q14), rand_Gain_Q15), 15))
 		psPLC.pitchL_Q8 = inlines.Silk_SMLAWB(psPLC.pitchL_Q8, psPLC.pitchL_Q8, PITCH_DRIFT_FAC_Q16)
-		psPLC.pitchL_Q8 = inlines.Silk_min_32(psPLC.pitchL_Q8, inlines.Silk_LSHIFT(int(inlines.Silk_SMULBB(MAX_PITCH_LAG_MS, int(psDec.fs_kHz))), 8))
+		psPLC.pitchL_Q8 = inlines.Silk_min_32(psPLC.pitchL_Q8, inlines.Silk_LSHIFT(int(inlines.Silk_SMULBB(MAX_PITCH_LAG_MS, int(psDec.Fs_kHz))), 8))
 		lag = int(inlines.Silk_RSHIFT_ROUND(psPLC.pitchL_Q8, 8))
 	}
 
 	sLPC_Q14_ptr := psDec.ltp_mem_length - MAX_LPC_ORDER
-	copy(sLTP_Q14[sLPC_Q14_ptr:], psDec.sLPC_Q14_buf[:MAX_LPC_ORDER])
+	copy(sLTP_Q14[sLPC_Q14_ptr:], psDec.SLPC_Q14_buf[:MAX_LPC_ORDER])
 
-	for i := 0; i < psDec.frame_length; i++ {
+	for i := 0; i < psDec.Frame_length; i++ {
 		sLPCmaxi := sLPC_Q14_ptr + MAX_LPC_ORDER + i
 		LPC_pred_Q10 := int(psDec.LPC_order >> 1)
 		LPC_pred_Q10 = inlines.Silk_SMLAWB(LPC_pred_Q10, sLTP_Q14[sLPCmaxi-1], int(psPLC.prevLPC_Q12[0]))
@@ -233,7 +233,7 @@ func silk_PLC_conceal(psDec *SilkChannelDecoder, psDecCtrl *SilkDecoderControl, 
 		frame[frame_ptr+i] = int16(inlines.Silk_SAT16(inlines.Silk_SAT16(inlines.Silk_RSHIFT_ROUND(inlines.Silk_SMULWW(sLTP_Q14[sLPCmaxi], prevGain_Q10[1]), 8))))
 	}
 
-	copy(psDec.sLPC_Q14_buf[:], sLTP_Q14[sLPC_Q14_ptr+psDec.frame_length:])
+	copy(psDec.SLPC_Q14_buf[:], sLTP_Q14[sLPC_Q14_ptr+psDec.Frame_length:])
 
 	psPLC.rand_seed = rand_seed
 	psPLC.randScale_Q14 = rand_scale_Q14

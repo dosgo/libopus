@@ -74,7 +74,7 @@ func (this *CeltDecoder) ResetState() {
 		this.decode_mem = make([][]int, this.channels)
 		this.lpc = make([][]int, this.channels)
 		for c := 0; c < this.channels; c++ {
-			this.decode_mem[c] = make([]int, CeltConstants.DECODE_BUFFER_SIZE+this.mode.overlap)
+			this.decode_mem[c] = make([]int, CeltConstants.DECODE_BUFFER_SIZE+this.mode.Overlap)
 			this.lpc[c] = make([]int, CeltConstants.LPC_ORDER)
 		}
 		nbEBands := this.mode.nbEBands
@@ -112,7 +112,7 @@ func (this *CeltDecoder) opus_custom_decoder_init(mode *CeltMode, channels int) 
 	}
 	this.Reset()
 	this.mode = mode
-	this.overlap = mode.overlap
+	this.overlap = mode.Overlap
 	this.stream_channels = channels
 	this.channels = channels
 	this.downsample = 1
@@ -130,7 +130,7 @@ func (this *CeltDecoder) celt_decode_lost(N int, LM int) {
 	out_syn_ptrs := make([]int, 2)
 	mode := this.mode
 	nbEBands := mode.nbEBands
-	overlap := mode.overlap
+	overlap := mode.Overlap
 	eBands := mode.eBands
 
 	for c := 0; c < C; c++ {
@@ -316,7 +316,7 @@ func (ed *CeltDecoder) Celt_decode_with_ec(data []byte, data_ptr int, length int
 
 	mode = ed.mode
 	nbEBands = mode.nbEBands
-	overlap = mode.overlap
+	overlap = mode.Overlap
 	eBands = mode.eBands
 	start = ed.start
 	end = ed.end
@@ -361,7 +361,7 @@ func (ed *CeltDecoder) Celt_decode_with_ec(data []byte, data_ptr int, length int
 
 	if data == nil || length <= 1 {
 		ed.celt_decode_lost(N, LM)
-		deemphasis(out_syn, out_syn_ptrs, pcm, pcm_ptr, N, CC, ed.downsample, mode.preemph, ed.preemph_memD, accum)
+		deemphasis(out_syn, out_syn_ptrs, pcm, pcm_ptr, N, CC, ed.downsample, mode.Preemph, ed.preemph_memD, accum)
 		return frame_size / ed.downsample
 	}
 
@@ -601,7 +601,7 @@ func (ed *CeltDecoder) Celt_decode_with_ec(data []byte, data_ptr int, length int
 	}
 	ed.rng = int(dec.Rng)
 
-	deemphasis(out_syn, out_syn_ptrs, pcm, pcm_ptr, N, CC, ed.downsample, mode.preemph, ed.preemph_memD, accum)
+	deemphasis(out_syn, out_syn_ptrs, pcm, pcm_ptr, N, CC, ed.downsample, mode.Preemph, ed.preemph_memD, accum)
 	ed.loss_count = 0
 
 	if dec.Tell() > 8*length {

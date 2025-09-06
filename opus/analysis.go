@@ -1,4 +1,4 @@
-package celt
+package opus
 
 import (
 	"math"
@@ -76,12 +76,12 @@ func tonality_get_info(tonal *TonalityAnalysisState, info_out *celt.AnalysisInfo
 	pos := tonal.read_pos
 	curr_lookahead := tonal.write_pos - tonal.read_pos
 	if curr_lookahead < 0 {
-		curr_lookahead += DETECT_SIZE
+		curr_lookahead += opusConstants.DETECT_SIZE
 	}
 
 	if len > 480 && pos != tonal.write_pos {
 		pos++
-		if pos == DETECT_SIZE {
+		if pos == opusConstants.DETECT_SIZE {
 			pos = 0
 		}
 	}
@@ -89,7 +89,7 @@ func tonality_get_info(tonal *TonalityAnalysisState, info_out *celt.AnalysisInfo
 		pos--
 	}
 	if pos < 0 {
-		pos = DETECT_SIZE - 1
+		pos = opusConstants.DETECT_SIZE - 1
 	}
 
 	info_out.Assign(tonal.info[pos])
@@ -98,17 +98,17 @@ func tonality_get_info(tonal *TonalityAnalysisState, info_out *celt.AnalysisInfo
 		tonal.read_subframe -= 4
 		tonal.read_pos++
 	}
-	if tonal.read_pos >= DETECT_SIZE {
-		tonal.read_pos -= DETECT_SIZE
+	if tonal.read_pos >= opusConstants.DETECT_SIZE {
+		tonal.read_pos -= opusConstants.DETECT_SIZE
 	}
 
 	curr_lookahead = inlines.IMAX(curr_lookahead-10, 0)
 
 	psum := float32(0)
-	for i := 0; i < DETECT_SIZE-curr_lookahead; i++ {
+	for i := 0; i < opusConstants.DETECT_SIZE-curr_lookahead; i++ {
 		psum += tonal.pmusic[i]
 	}
-	for i := DETECT_SIZE - curr_lookahead; i < DETECT_SIZE; i++ {
+	for i := opusConstants.DETECT_SIZE - curr_lookahead; i < opusConstants.DETECT_SIZE; i++ {
 		psum += tonal.pspeech[i]
 	}
 	psum = psum*tonal.music_confidence + (1-psum)*tonal.speech_confidence
@@ -176,12 +176,12 @@ func tonality_analysis(tonal *TonalityAnalysisState, celt_mode *celt.CeltMode, x
 		input[2*(N-i-1)+1] = int(w * float32(tonal.inmem[N+N2-i-1]))
 	}
 	//copy(tonal.inmem, tonal.inmem[ANALYSIS_BUF_SIZE-240:ANALYSIS_BUF_SIZE])
-	MemMove(tonal.inmem, ANALYSIS_BUF_SIZE-240, 0, 240)
-	remaining := len - (ANALYSIS_BUF_SIZE - tonal.mem_fill)
-	downmix_int(x, x_ptr, tonal.inmem, 240, remaining, offset+ANALYSIS_BUF_SIZE-tonal.mem_fill, c1, c2, C)
+	MemMove(tonal.inmem, opusConstants.ANALYSIS_BUF_SIZE-240, 0, 240)
+	remaining := len - (opusConstants.ANALYSIS_BUF_SIZE - tonal.mem_fill)
+	downmix_int(x, x_ptr, tonal.inmem, 240, remaining, offset+opusConstants.ANALYSIS_BUF_SIZE-tonal.mem_fill, c1, c2, C)
 	tonal.mem_fill = 240 + remaining
 
-	opus_fft(kfft, input, output)
+	celt.Opus_fft(kfft, input, output)
 
 	for i := 1; i < N2; i++ {
 		X1r := float32(output[2*i] + output[2*(N-i)])
@@ -221,14 +221,14 @@ func tonality_analysis(tonal *TonalityAnalysisState, celt_mode *celt.CeltMode, x
 	frame_noisiness = 0
 	frame_stationarity = 0
 	if tonal.count == 0 {
-		for b := 0; b < NB_TBANDS; b++ {
+		for b := 0; b < opusConstants.NB_TBANDS; b++ {
 			tonal.lowE[b] = 1e10
 			tonal.highE[b] = -1e10
 		}
 	}
 	relativeE = 0
 	frame_loudness = 0
-	for b := 0; b < NB_TBANDS; b++ {
+	for b := 0; b < opusConstants.NB_TBANDS; b++ {
 		E := float32(0)
 		tE := float32(0)
 		nE := float32(0)
@@ -257,21 +257,21 @@ func tonality_analysis(tonal *TonalityAnalysisState, celt_mode *celt.CeltMode, x
 
 		L1 = 0
 		L2 = 0
-		for i := 0; i < NB_FRAMES; i++ {
+		for i := 0; i < opusConstants.NB_FRAMES; i++ {
 			L1 += float32(math.Sqrt(float64(tonal.E[i][b])))
 			L2 += tonal.E[i][b]
 		}
 
-		stationarity := inlines.MIN16Float(0.99, L1/float32(math.Sqrt(1e-15+float64(NB_FRAMES)*float64(L2))))
+		stationarity := inlines.MIN16Float(0.99, L1/float32(math.Sqrt(1e-15+float64(opusConstants.NB_FRAMES)*float64(L2))))
 		stationarity *= stationarity
 		stationarity *= stationarity
 		frame_stationarity += stationarity
 		band_tonality[b] = inlines.MAX16Float(tE/(1e-15+E), stationarity*tonal.prev_band_tonality[b])
 		frame_tonality += band_tonality[b]
-		if b >= NB_TBANDS-NB_TONAL_SKIP_BANDS {
-			frame_tonality -= band_tonality[b-NB_TBANDS+NB_TONAL_SKIP_BANDS]
+		if b >= opusConstants.NB_TBANDS-opusConstants.NB_TONAL_SKIP_BANDS {
+			frame_tonality -= band_tonality[b-opusConstants.NB_TBANDS+opusConstants.NB_TONAL_SKIP_BANDS]
 		}
-		max_frame_tonality = inlines.MAX16Float(max_frame_tonality, (1.0+0.03*float32(b-NB_TBANDS))*frame_tonality)
+		max_frame_tonality = inlines.MAX16Float(max_frame_tonality, (1.0+0.03*float32(b-opusConstants.NB_TBANDS))*frame_tonality)
 		slope += band_tonality[b] * float32(b-8)
 		tonal.prev_band_tonality[b] = band_tonality[b]
 	}
@@ -404,23 +404,23 @@ func tonality_analysis(tonal *TonalityAnalysisState, celt_mode *celt.CeltMode, x
 			m0 := tonal.pmusic[0] + tonal.pmusic[1]
 			tonal.pspeech[0] = s0 * (1 - tau) * speech0
 			tonal.pmusic[0] = m0 * (1 - tau) * music0
-			for i := 1; i < DETECT_SIZE-1; i++ {
+			for i := 1; i < opusConstants.DETECT_SIZE-1; i++ {
 				tonal.pspeech[i] = tonal.pspeech[i+1] * speech0
 				tonal.pmusic[i] = tonal.pmusic[i+1] * music0
 			}
-			tonal.pspeech[DETECT_SIZE-1] = m0 * tau * speech0
-			tonal.pmusic[DETECT_SIZE-1] = s0 * tau * music0
+			tonal.pspeech[opusConstants.DETECT_SIZE-1] = m0 * tau * speech0
+			tonal.pmusic[opusConstants.DETECT_SIZE-1] = s0 * tau * music0
 
-			for i := 0; i < DETECT_SIZE; i++ {
+			for i := 0; i < opusConstants.DETECT_SIZE; i++ {
 				psum += tonal.pspeech[i] + tonal.pmusic[i]
 			}
 			psum = 1.0 / psum
-			for i := 0; i < DETECT_SIZE; i++ {
+			for i := 0; i < opusConstants.DETECT_SIZE; i++ {
 				tonal.pspeech[i] *= psum
 				tonal.pmusic[i] *= psum
 			}
 			psum = tonal.pmusic[0]
-			for i := 1; i < DETECT_SIZE; i++ {
+			for i := 1; i < opusConstants.DETECT_SIZE; i++ {
 				psum += tonal.pspeech[i]
 			}
 
@@ -467,12 +467,12 @@ func tonality_analysis(tonal *TonalityAnalysisState, celt_mode *celt.CeltMode, x
 	info.Valid = 1
 }
 
-func run_analysis(analysis *TonalityAnalysisState, celt_mode *celt.CeltMode, analysis_pcm []int16, analysis_pcm_ptr int, analysis_frame_size int, frame_size int, c1 int, c2 int, C int, Fs int, lsb_depth int, analysis_info *AnalysisInfo) {
+func run_analysis(analysis *TonalityAnalysisState, celt_mode *celt.CeltMode, analysis_pcm []int16, analysis_pcm_ptr int, analysis_frame_size int, frame_size int, c1 int, c2 int, C int, Fs int, lsb_depth int, analysis_info *celt.AnalysisInfo) {
 	offset := 0
 	pcm_len := 0
 
 	if analysis_pcm != nil {
-		analysis_frame_size = inlines.IMIN((DETECT_SIZE-5)*Fs/100, analysis_frame_size)
+		analysis_frame_size = inlines.IMIN((opusConstants.DETECT_SIZE-5)*Fs/100, analysis_frame_size)
 
 		pcm_len = analysis_frame_size - analysis.analysis_offset
 		offset = analysis.analysis_offset
@@ -486,6 +486,6 @@ func run_analysis(analysis *TonalityAnalysisState, celt_mode *celt.CeltMode, ana
 		analysis.analysis_offset -= frame_size
 	}
 
-	analysis_info.valid = 0
+	analysis_info.Valid = 0
 	tonality_get_info(analysis, analysis_info, frame_size)
 }

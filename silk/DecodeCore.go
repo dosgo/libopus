@@ -28,24 +28,24 @@ func silk_decode_core(
 	var res_Q14 []int
 	var sLPC_Q14 []int
 
-	inlines.OpusAssert(psDec.prev_gain_Q16 != 0)
+	inlines.OpusAssert(psDec.Prev_gain_Q16 != 0)
 
 	sLTP = make([]int16, psDec.ltp_mem_length)
-	sLTP_Q15 = make([]int, psDec.ltp_mem_length+psDec.frame_length)
+	sLTP_Q15 = make([]int, psDec.ltp_mem_length+psDec.Frame_length)
 	res_Q14 = make([]int, psDec.subfr_length)
 	sLPC_Q14 = make([]int, psDec.subfr_length+SilkConstants.MAX_LPC_ORDER)
 
-	offset_Q10 = int(silk_Quantization_Offsets_Q10[psDec.indices.signalType>>1][psDec.indices.quantOffsetType])
+	offset_Q10 = int(silk_Quantization_Offsets_Q10[psDec.Indices.SignalType>>1][psDec.Indices.QuantOffsetType])
 
-	if psDec.indices.NLSFInterpCoef_Q2 < 1<<2 {
+	if psDec.Indices.NLSFInterpCoef_Q2 < 1<<2 {
 		NLSF_interpolation_flag = 1
 	} else {
 		NLSF_interpolation_flag = 0
 	}
 
 	/* Decode excitation */
-	rand_seed = int(psDec.indices.Seed)
-	for i = 0; i < psDec.frame_length; i++ {
+	rand_seed = int(psDec.Indices.Seed)
+	for i = 0; i < psDec.Frame_length; i++ {
 		rand_seed = inlines.Silk_RAND(rand_seed)
 		psDec.exc_Q14[i] = inlines.Silk_LSHIFT(int(pulses[i]), 14)
 		if psDec.exc_Q14[i] > 0 {
@@ -65,24 +65,24 @@ func silk_decode_core(
 
 	/* Copy LPC state */
 	//	System.arraycopy(psDec.sLPC_Q14_buf, 0, sLPC_Q14, 0, SilkConstants.MAX_LPC_ORDER)
-	copy(sLPC_Q14[0:], psDec.sLPC_Q14_buf[0:SilkConstants.MAX_LPC_ORDER])
+	copy(sLPC_Q14[0:], psDec.SLPC_Q14_buf[0:SilkConstants.MAX_LPC_ORDER])
 	pexc_Q14 = 0
 	pxq = xq_ptr
 	sLTP_buf_idx = psDec.ltp_mem_length
 	/* Loop over subframes */
-	for k = 0; k < psDec.nb_subfr; k++ {
+	for k = 0; k < psDec.Nb_subfr; k++ {
 		pres_Q14 = res_Q14
 		pres_Q14_ptr = 0
 		A_Q12 = psDecCtrl.PredCoef_Q12[k>>1]
 		B_Q14_ptr = k * SilkConstants.LTP_ORDER
-		signalType = int(psDec.indices.signalType)
+		signalType = int(psDec.Indices.SignalType)
 
 		Gain_Q10 = inlines.Silk_RSHIFT(psDecCtrl.Gains_Q16[k], 6)
 		inv_gain_Q31 = inlines.Silk_INVERSE32_varQ(psDecCtrl.Gains_Q16[k], 47)
 
 		/* Calculate gain adjustment factor */
-		if psDecCtrl.Gains_Q16[k] != psDec.prev_gain_Q16 {
-			gain_adj_Q16 = inlines.Silk_DIV32_varQ(psDec.prev_gain_Q16, psDecCtrl.Gains_Q16[k], 16)
+		if psDecCtrl.Gains_Q16[k] != psDec.Prev_gain_Q16 {
+			gain_adj_Q16 = inlines.Silk_DIV32_varQ(psDec.Prev_gain_Q16, psDecCtrl.Gains_Q16[k], 16)
 
 			/* Scale short term state */
 			for i = 0; i < SilkConstants.MAX_LPC_ORDER; i++ {
@@ -94,17 +94,17 @@ func silk_decode_core(
 
 		/* Save inv_gain */
 		inlines.OpusAssert(inv_gain_Q31 != 0)
-		psDec.prev_gain_Q16 = psDecCtrl.Gains_Q16[k]
+		psDec.Prev_gain_Q16 = psDecCtrl.Gains_Q16[k]
 
 		/* Avoid abrupt transition from voiced PLC to unvoiced normal decoding */
-		if psDec.lossCnt != 0 && psDec.prevSignalType == SilkConstants.TYPE_VOICED &&
-			int(psDec.indices.signalType) != SilkConstants.TYPE_VOICED && k < SilkConstants.MAX_NB_SUBFR/2 {
+		if psDec.lossCnt != 0 && psDec.PrevSignalType == SilkConstants.TYPE_VOICED &&
+			int(psDec.Indices.SignalType) != SilkConstants.TYPE_VOICED && k < SilkConstants.MAX_NB_SUBFR/2 {
 
 			arrayUtil.MemSetWithOffset(B_Q14, 0, B_Q14_ptr, SilkConstants.LTP_ORDER)
 			B_Q14[B_Q14_ptr+(SilkConstants.LTP_ORDER/2)] = int16(math.Trunc((0.25)*float64(int64(1)<<(14)) + 0.5))
 
 			signalType = SilkConstants.TYPE_VOICED
-			psDecCtrl.pitchL[k] = psDec.lagPrev
+			psDecCtrl.pitchL[k] = psDec.LagPrev
 		}
 
 		if signalType == SilkConstants.TYPE_VOICED {
@@ -119,10 +119,10 @@ func silk_decode_core(
 
 				if k == 2 {
 					//	System.arraycopy(xq, xq_ptr, psDec.outBuf, psDec.ltp_mem_length, 2*psDec.subfr_length)
-					copy(psDec.outBuf[psDec.ltp_mem_length:], xq[xq_ptr:xq_ptr+2*psDec.subfr_length])
+					copy(psDec.OutBuf[psDec.ltp_mem_length:], xq[xq_ptr:xq_ptr+2*psDec.subfr_length])
 				}
 
-				silk_LPC_analysis_filter(sLTP, start_idx, psDec.outBuf, (start_idx + k*psDec.subfr_length),
+				silk_LPC_analysis_filter(sLTP, start_idx, psDec.OutBuf, (start_idx + k*psDec.subfr_length),
 					A_Q12, 0, psDec.ltp_mem_length-start_idx, psDec.LPC_order)
 
 				/* After rewhitening the LTP state is unscaled */
@@ -209,6 +209,6 @@ func silk_decode_core(
 
 	/* Save LPC state */
 	//	System.arraycopy(sLPC_Q14, 0, psDec.sLPC_Q14_buf, 0, SilkConstants.MAX_LPC_ORDER)
-	copy(psDec.sLPC_Q14_buf, sLPC_Q14[:SilkConstants.MAX_LPC_ORDER])
+	copy(psDec.SLPC_Q14_buf, sLPC_Q14[:SilkConstants.MAX_LPC_ORDER])
 
 }

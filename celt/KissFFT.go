@@ -315,7 +315,7 @@ func opus_fft_impl(st *FFTState, fout []int, fout_ptr int) {
 	}
 }
 
-func opus_fft(st *FFTState, fin []int, fout []int) {
+func Opus_fft(st *FFTState, fin []int, fout []int) {
 	var i int
 	scale_shift := st.scale_shift - 1
 	scale := int16(st.scale)

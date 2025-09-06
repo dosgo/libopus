@@ -1320,7 +1320,7 @@ func (inlines *Inlines) MatrixGet(Matrix_base_adr []int, row, column, N int) int
 	return Matrix_base_adr[row*N+column]
 }
 
-func (inlines *Inlines) MatrixGetVals(Matrix_base_adr []*silk_pe_stage3_vals, row int, column int, N int) *silk_pe_stage3_vals {
+func (inlines *Inlines) MatrixGetVals(Matrix_base_adr []*Silk_pe_stage3_vals, row int, column int, N int) *Silk_pe_stage3_vals {
 	return Matrix_base_adr[((row)*(N))+(column)]
 }
 

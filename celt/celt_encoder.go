@@ -115,7 +115,7 @@ func (this *CeltEncoder) PartialReset() {
 func (this *CeltEncoder) ResetState() {
 	this.PartialReset()
 
-	this.in_mem = arrayUtil.InitTwoDimensionalArrayInt(this.channels, this.mode.overlap)
+	this.in_mem = arrayUtil.InitTwoDimensionalArrayInt(this.channels, this.mode.Overlap)
 	this.prefilter_mem = arrayUtil.InitTwoDimensionalArrayInt(this.channels, CeltConstants.COMBFILTER_MAXPERIOD)
 	this.oldBandE = arrayUtil.InitTwoDimensionalArrayInt(this.channels, this.mode.nbEBands)
 	this.oldLogE = arrayUtil.InitTwoDimensionalArrayInt(this.channels, this.mode.nbEBands)
@@ -167,7 +167,7 @@ func (this *CeltEncoder) opus_custom_encoder_init_arch(mode *CeltMode, channels 
 	return OpusError.OPUS_OK
 }
 
-func (this *CeltEncoder) celt_encoder_init(sampling_rate int, channels int) int {
+func (this *CeltEncoder) Celt_encoder_init(sampling_rate int, channels int) int {
 	ret := this.opus_custom_encoder_init_arch(mode48000_960_120, channels)
 	if ret != OpusError.OPUS_OK {
 		return ret
@@ -178,7 +178,7 @@ func (this *CeltEncoder) celt_encoder_init(sampling_rate int, channels int) int 
 
 func (this *CeltEncoder) run_prefilter(input [][]int, prefilter_mem [][]int, CC int, N int, prefilter_tapset int, pitch *comm.BoxedValueInt, gain *comm.BoxedValueInt, qgain *comm.BoxedValueInt, enabled int, nbAvailableBytes int) int {
 	mode := this.mode
-	overlap := mode.overlap
+	overlap := mode.Overlap
 	pre := make([][]int, CC)
 	for z := range pre {
 		pre[z] = make([]int, N+CeltConstants.COMBFILTER_MAXPERIOD)
@@ -346,7 +346,7 @@ func (this *CeltEncoder) Celt_encode_with_ec(pcm []int16, pcm_ptr int, frame_siz
 
 	mode = this.mode
 	nbEBands = mode.nbEBands
-	overlap = mode.overlap
+	overlap = mode.Overlap
 	eBands = mode.eBands
 	start = this.start
 	end = this.end
@@ -469,7 +469,7 @@ func (this *CeltEncoder) Celt_encode_with_ec(pcm []int16, pcm_ptr int, frame_siz
 		var need_clip int = 0
 		boxed_memE.Val = this.preemph_memE[c]
 		celt_preemphasis(pcm, pcm_ptr+c, input[c], overlap, N, CC, this.upsample,
-			mode.preemph, &boxed_memE, need_clip)
+			mode.Preemph, &boxed_memE, need_clip)
 		this.preemph_memE[c] = boxed_memE.Val
 		c++
 		if c < CC {

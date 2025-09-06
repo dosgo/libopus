@@ -29,9 +29,9 @@ func silk_VAD_GetSA_Q8(psEncC *SilkChannelEncoder, pIn []int16, pIn_ptr int) int
 	SA_Q15 := 0
 	pSNR_dB_Q7 := 0
 	input_tilt := 0
-	decimated_framelength1 := inlines.Silk_RSHIFT(psEncC.frame_length, 1)
-	decimated_framelength2 := inlines.Silk_RSHIFT(psEncC.frame_length, 2)
-	decimated_framelength := inlines.Silk_RSHIFT(psEncC.frame_length, 3)
+	decimated_framelength1 := inlines.Silk_RSHIFT(psEncC.Frame_length, 1)
+	decimated_framelength2 := inlines.Silk_RSHIFT(psEncC.Frame_length, 2)
+	decimated_framelength := inlines.Silk_RSHIFT(psEncC.Frame_length, 3)
 
 	X_offset := [4]int{
 		0,
@@ -42,7 +42,7 @@ func silk_VAD_GetSA_Q8(psEncC *SilkChannelEncoder, pIn []int16, pIn_ptr int) int
 	totalLen := X_offset[3] + decimated_framelength1
 	X := make([]int16, totalLen)
 
-	silk_ana_filt_bank_1(pIn, pIn_ptr, psEncC.sVAD.AnaState, X, X, X_offset[3], psEncC.frame_length)
+	silk_ana_filt_bank_1(pIn, pIn_ptr, psEncC.sVAD.AnaState, X, X, X_offset[3], psEncC.Frame_length)
 	silk_ana_filt_bank_1(X, 0, psEncC.sVAD.AnaState1, X, X, X_offset[2], decimated_framelength1)
 	silk_ana_filt_bank_1(X, 0, psEncC.sVAD.AnaState2, X, X, X_offset[1], decimated_framelength2)
 
@@ -62,7 +62,7 @@ func silk_VAD_GetSA_Q8(psEncC *SilkChannelEncoder, pIn []int16, pIn_ptr int) int
 
 	for b := 0; b < VAD_N_BANDS; b++ {
 		shift := inlines.Silk_min_int(VAD_N_BANDS-b, VAD_N_BANDS-1)
-		decimated_framelength = inlines.Silk_RSHIFT(psEncC.frame_length, shift)
+		decimated_framelength = inlines.Silk_RSHIFT(psEncC.Frame_length, shift)
 		dec_subframe_length := inlines.Silk_RSHIFT(decimated_framelength, VAD_INTERNAL_SUBFRAMES_LOG2)
 		dec_subframe_offset := 0
 
@@ -125,7 +125,7 @@ func silk_VAD_GetSA_Q8(psEncC *SilkChannelEncoder, pIn []int16, pIn_ptr int) int
 	if speech_nrg <= 0 {
 		SA_Q15 = inlines.Silk_RSHIFT(SA_Q15, 1)
 	} else if speech_nrg < 32768 {
-		if psEncC.frame_length == 10*psEncC.fs_kHz {
+		if psEncC.Frame_length == 10*psEncC.Fs_kHz {
 			speech_nrg = inlines.Silk_LSHIFT_SAT32(speech_nrg, 16)
 		} else {
 			speech_nrg = inlines.Silk_LSHIFT_SAT32(speech_nrg, 15)
@@ -137,10 +137,10 @@ func silk_VAD_GetSA_Q8(psEncC *SilkChannelEncoder, pIn []int16, pIn_ptr int) int
 	if SA_Q15 < 0 {
 		SA_Q15 = 0
 	}
-	psEncC.speech_activity_Q8 = inlines.Silk_min_int(inlines.Silk_RSHIFT(SA_Q15, 7), 255)
+	psEncC.Speech_activity_Q8 = inlines.Silk_min_int(inlines.Silk_RSHIFT(SA_Q15, 7), 255)
 
 	smooth_coef_Q16 := int(inlines.Silk_SMULWB(VAD_SNR_SMOOTH_COEF_Q18, inlines.Silk_SMULWB(int(SA_Q15), int(SA_Q15))))
-	if psEncC.frame_length == 10*psEncC.fs_kHz {
+	if psEncC.Frame_length == 10*psEncC.Fs_kHz {
 		smooth_coef_Q16 >>= 1
 	}
 
@@ -148,7 +148,7 @@ func silk_VAD_GetSA_Q8(psEncC *SilkChannelEncoder, pIn []int16, pIn_ptr int) int
 		psEncC.sVAD.NrgRatioSmth_Q8[b] = inlines.Silk_SMLAWB(psEncC.sVAD.NrgRatioSmth_Q8[b],
 			NrgToNoiseRatio_Q8[b]-psEncC.sVAD.NrgRatioSmth_Q8[b], int(smooth_coef_Q16))
 		SNR_Q7 := 3 * (inlines.Silk_lin2log(psEncC.sVAD.NrgRatioSmth_Q8[b]) - 8*128)
-		psEncC.input_quality_bands_Q15[b] = silk_sigm_Q15(inlines.Silk_RSHIFT(SNR_Q7-16*128, 4))
+		psEncC.Input_quality_bands_Q15[b] = silk_sigm_Q15(inlines.Silk_RSHIFT(SNR_Q7-16*128, 4))
 	}
 
 	return 0

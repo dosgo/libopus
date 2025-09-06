@@ -36,17 +36,17 @@ package silk
 /// Decoder super struct
 /// </summary>
 type SilkDecoder struct {
-	channel_state           [DECODER_NUM_CHANNELS]*SilkChannelDecoder
+	Channel_state           [DECODER_NUM_CHANNELS]*SilkChannelDecoder
 	SStereo                 *StereoDecodeState
-	nChannelsAPI            int
-	nChannelsInternal       int
-	prev_decode_only_middle int
+	NChannelsAPI            int
+	NChannelsInternal       int
+	Prev_decode_only_middle int
 }
 
 func NewSilkDecoder() SilkDecoder {
 	d := SilkDecoder{}
 	for c := 0; c < DECODER_NUM_CHANNELS; c++ {
-		d.channel_state[c] = NewSilkChannelDecoder()
+		d.Channel_state[c] = NewSilkChannelDecoder()
 	}
 	d.SStereo = &StereoDecodeState{}
 	return d
@@ -54,10 +54,10 @@ func NewSilkDecoder() SilkDecoder {
 
 func (d *SilkDecoder) Reset() {
 	for c := 0; c < DECODER_NUM_CHANNELS; c++ {
-		d.channel_state[c].Reset()
+		d.Channel_state[c].Reset()
 	}
 	d.SStereo.Reset()
-	d.nChannelsAPI = 0
-	d.nChannelsInternal = 0
-	d.prev_decode_only_middle = 0
+	d.NChannelsAPI = 0
+	d.NChannelsInternal = 0
+	d.Prev_decode_only_middle = 0
 }

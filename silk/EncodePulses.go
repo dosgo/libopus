@@ -28,7 +28,7 @@ func combine_and_check4(
 	return 0
 }
 
-func silk_encode_pulses(
+func Silk_encode_pulses(
 	psRangeEnc *comm.EntropyCoder,
 	signalType int,
 	quantOffsetType int,

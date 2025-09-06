@@ -6,8 +6,8 @@ type SideInfoIndices struct {
 	NLSFIndices       []int8
 	lagIndex          int16
 	contourIndex      int8
-	signalType        byte
-	quantOffsetType   byte
+	SignalType        byte
+	QuantOffsetType   byte
 	NLSFInterpCoef_Q2 byte
 	PERIndex          int8
 	LTP_scaleIndex    int8
@@ -34,8 +34,8 @@ func (si *SideInfoIndices) Reset() {
 	}
 	si.lagIndex = 0
 	si.contourIndex = 0
-	si.signalType = 0
-	si.quantOffsetType = 0
+	si.SignalType = 0
+	si.QuantOffsetType = 0
 	si.NLSFInterpCoef_Q2 = 0
 	si.PERIndex = 0
 	si.LTP_scaleIndex = 0
@@ -49,8 +49,8 @@ func (si *SideInfoIndices) Assign(other *SideInfoIndices) {
 	copy(si.NLSFIndices, other.NLSFIndices)
 	si.lagIndex = other.lagIndex
 	si.contourIndex = other.contourIndex
-	si.signalType = other.signalType
-	si.quantOffsetType = other.quantOffsetType
+	si.SignalType = other.SignalType
+	si.QuantOffsetType = other.QuantOffsetType
 	si.NLSFInterpCoef_Q2 = other.NLSFInterpCoef_Q2
 	si.PERIndex = other.PERIndex
 	si.LTP_scaleIndex = other.LTP_scaleIndex

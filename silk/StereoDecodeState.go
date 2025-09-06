@@ -33,13 +33,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package silk
 
 type StereoDecodeState struct {
-	pred_prev_Q13 [2]int16
-	sMid          [2]int16
-	sSide         [2]int16
+	Pred_prev_Q13 [2]int16
+	SMid          [2]int16
+	SSide         [2]int16
 }
 
 func (s *StereoDecodeState) Reset() {
-	s.pred_prev_Q13 = [2]int16{}
-	s.sMid = [2]int16{}
-	s.sSide = [2]int16{}
+	s.Pred_prev_Q13 = [2]int16{}
+	s.SMid = [2]int16{}
+	s.SSide = [2]int16{}
 }

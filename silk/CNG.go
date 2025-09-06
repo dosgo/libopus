@@ -50,12 +50,12 @@ func silk_CNG(
 
 	psCNG := psDec.sCNG
 
-	if psDec.fs_kHz != psCNG.fs_kHz {
+	if psDec.Fs_kHz != psCNG.fs_kHz {
 		silk_CNG_Reset(psDec)
-		psCNG.fs_kHz = psDec.fs_kHz
+		psCNG.fs_kHz = psDec.Fs_kHz
 	}
 
-	if psDec.lossCnt == 0 && psDec.prevSignalType == TYPE_NO_VOICE_ACTIVITY {
+	if psDec.lossCnt == 0 && psDec.PrevSignalType == TYPE_NO_VOICE_ACTIVITY {
 		for i := 0; i < psDec.LPC_order; i++ {
 			diff := int(psDec.prevNLSF_Q15[i]) - int(psCNG.CNG_smth_NLSF_Q15[i])
 			psCNG.CNG_smth_NLSF_Q15[i] += int16(inlines.Silk_SMULWB(diff, CNG_NLSF_SMTH_Q16))
@@ -63,17 +63,17 @@ func silk_CNG(
 
 		max_Gain_Q16 := 0
 		//subfr := 0
-		for i := 0; i < psDec.nb_subfr; i++ {
+		for i := 0; i < psDec.Nb_subfr; i++ {
 			if psDecCtrl.Gains_Q16[i] > max_Gain_Q16 {
 				max_Gain_Q16 = psDecCtrl.Gains_Q16[i]
 				//	subfr = i
 			}
 		}
 
-		lengthToMove := (psDec.nb_subfr - 1) * psDec.subfr_length
+		lengthToMove := (psDec.Nb_subfr - 1) * psDec.subfr_length
 		copy(psCNG.CNG_exc_buf_Q14[0:lengthToMove], psCNG.CNG_exc_buf_Q14[psDec.subfr_length:psDec.subfr_length+lengthToMove])
 
-		for i := 0; i < psDec.nb_subfr; i++ {
+		for i := 0; i < psDec.Nb_subfr; i++ {
 			gainDiff := psDecCtrl.Gains_Q16[i] - psCNG.CNG_smth_Gain_Q16
 			psCNG.CNG_smth_Gain_Q16 += inlines.Silk_SMULWB(gainDiff, CNG_GAIN_SMTH_Q16)
 		}

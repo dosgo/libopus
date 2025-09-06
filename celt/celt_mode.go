@@ -38,7 +38,7 @@ package celt
 
 type CeltMode struct {
 	Fs             int
-	overlap        int
+	Overlap        int
 	nbEBands       int
 	effEBands      int
 	Preemph        []int
@@ -56,7 +56,7 @@ type CeltMode struct {
 
 var mode48000_960_120 *CeltMode = &CeltMode{
 	Fs:             48000,
-	overlap:        120,
+	Overlap:        120,
 	nbEBands:       21,
 	effEBands:      21,
 	Preemph:        []int{27853, 0, 4096, 8192},

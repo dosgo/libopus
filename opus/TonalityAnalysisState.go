@@ -1,6 +1,9 @@
-package celt
+package opus
 
-import "github.com/dosgo/libopus/opusConstants"
+import (
+	"github.com/dosgo/libopus/celt"
+	"github.com/dosgo/libopus/opusConstants"
+)
 
 type TonalityAnalysisState struct {
 	Enabled                 bool
@@ -36,13 +39,13 @@ type TonalityAnalysisState struct {
 	write_pos               int
 	read_pos                int
 	read_subframe           int
-	info                    [opusConstants.DETECT_SIZE]*AnalysisInfo
+	info                    [opusConstants.DETECT_SIZE]*celt.AnalysisInfo
 }
 
 func NewTonalityAnalysisState() TonalityAnalysisState {
 	t := TonalityAnalysisState{}
 	for i := 0; i < opusConstants.DETECT_SIZE; i++ {
-		t.info[i] = &AnalysisInfo{}
+		t.info[i] = &celt.AnalysisInfo{}
 	}
 	return t
 }

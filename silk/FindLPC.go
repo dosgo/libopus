@@ -37,7 +37,7 @@ func silk_find_LPC(
 	res_nrg = scratch_box1.Val
 	res_nrg_Q = scratch_box2.Val
 
-	if psEncC.useInterpolatedNLSFs != 0 && psEncC.first_frame_after_reset == 0 && psEncC.nb_subfr == SilkConstants.MAX_NB_SUBFR {
+	if psEncC.useInterpolatedNLSFs != 0 && psEncC.First_frame_after_reset == 0 && psEncC.nb_subfr == SilkConstants.MAX_NB_SUBFR {
 		var LPC_res []int16
 
 		/* Optimal solution for last 10 ms */
@@ -65,7 +65,7 @@ func silk_find_LPC(
 		/* Search over interpolation indices to find the one with lowest residual energy */
 		for k = 3; k >= 0; k-- {
 			/* Interpolate NLSFs for first half */
-			inlines.Silk_interpolate(NLSF0_Q15, psEncC.prev_NLSFq_Q15, NLSF_Q15, k, psEncC.predictLPCOrder)
+			inlines.Silk_interpolate(NLSF0_Q15, psEncC.Prev_NLSFq_Q15, NLSF_Q15, k, psEncC.predictLPCOrder)
 
 			/* Convert to LPC for residual energy evaluation */
 			silk_NLSF2A(a_tmp_Q12, NLSF0_Q15, psEncC.predictLPCOrder)
@@ -121,6 +121,6 @@ func silk_find_LPC(
 		silk_A2NLSF(NLSF_Q15, a_Q16, psEncC.predictLPCOrder)
 	}
 
-	inlines.OpusAssert(psEncC.indices.NLSFInterpCoef_Q2 == 4 || (psEncC.useInterpolatedNLSFs != 0 && psEncC.first_frame_after_reset == 0 && psEncC.nb_subfr == SilkConstants.MAX_NB_SUBFR))
+	inlines.OpusAssert(psEncC.indices.NLSFInterpCoef_Q2 == 4 || (psEncC.useInterpolatedNLSFs != 0 && psEncC.First_frame_after_reset == 0 && psEncC.nb_subfr == SilkConstants.MAX_NB_SUBFR))
 
 }

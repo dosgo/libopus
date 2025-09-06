@@ -49,8 +49,8 @@ func silk_find_pred_coefs(
 		local_gains[i] = inlines.Silk_DIV32(int(int32(1)<<16), invGains_Q16[i])
 	}
 
-	LPC_in_pre = make([]int16, psEnc.nb_subfr*psEnc.predictLPCOrder+psEnc.frame_length)
-	if psEnc.indices.signalType == TYPE_VOICED {
+	LPC_in_pre = make([]int16, psEnc.nb_subfr*psEnc.predictLPCOrder+psEnc.Frame_length)
+	if psEnc.indices.SignalType == TYPE_VOICED {
 
 		var WLTP []int
 
@@ -112,7 +112,7 @@ func silk_find_pred_coefs(
 	}
 
 	/* Limit on total predictive coding gain */
-	if psEnc.first_frame_after_reset != 0 {
+	if psEnc.First_frame_after_reset != 0 {
 		minInvGain_Q30 = int((1.0/float64(SilkConstants.MAX_PREDICTION_POWER_GAIN_AFTER_RESET))*float64(int64(1)<<(30)) + 0.5)
 	} else {
 		minInvGain_Q30 = inlines.Silk_log2lin(inlines.Silk_SMLAWB(16<<7, psEncCtrl.LTPredCodGain_Q7, int(math.Trunc((1.0/3)*float64(int64(1)<<(16))+0.5))))
@@ -125,7 +125,7 @@ func silk_find_pred_coefs(
 	silk_find_LPC(psEnc, NLSF_Q15, LPC_in_pre, minInvGain_Q30)
 
 	/* Quantize LSFs */
-	silk_process_NLSFs(psEnc, psEncCtrl.PredCoef_Q12, NLSF_Q15, psEnc.prev_NLSFq_Q15)
+	silk_process_NLSFs(psEnc, psEncCtrl.PredCoef_Q12, NLSF_Q15, psEnc.Prev_NLSFq_Q15)
 
 	/* Calculate residual energy using quantized LPC coefficients */
 	silk_residual_energy(psEncCtrl.ResNrg[:], psEncCtrl.ResNrgQ[:], LPC_in_pre, psEncCtrl.PredCoef_Q12, local_gains,
@@ -134,5 +134,5 @@ func silk_find_pred_coefs(
 	/* Copy to prediction struct for use in next frame for interpolation */
 	//	System.arraycopy(NLSF_Q15, 0, psEnc.prev_NLSFq_Q15, 0, SilkConstants.MAX_LPC_ORDER)
 	//
-	copy(psEnc.prev_NLSFq_Q15, NLSF_Q15[:SilkConstants.MAX_LPC_ORDER])
+	copy(psEnc.Prev_NLSFq_Q15, NLSF_Q15[:SilkConstants.MAX_LPC_ORDER])
 }

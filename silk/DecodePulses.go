@@ -2,7 +2,7 @@ package silk
 
 import "github.com/dosgo/libopus/comm"
 
-func silk_decode_pulses(
+func Silk_decode_pulses(
 	psRangeDec *comm.EntropyCoder,
 	pulses []int16,
 	signalType int,

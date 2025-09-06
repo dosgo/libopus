@@ -813,8 +813,8 @@ func silk_process_NLSFs(psEncC *SilkChannelEncoder, PredCoef_Q12 [][]int16, pNLS
 	pNLSFW_QW := make([]int16, SilkConstants.MAX_LPC_ORDER)
 	pNLSFW0_temp_QW := make([]int16, SilkConstants.MAX_LPC_ORDER)
 
-	inlines.OpusAssert(psEncC.speech_activity_Q8 >= 0)
-	inlines.OpusAssert(psEncC.speech_activity_Q8 <= (int(math.Trunc(1.0*float64(int64(1)<<(8)) + 0.5))))
+	inlines.OpusAssert(psEncC.Speech_activity_Q8 >= 0)
+	inlines.OpusAssert(psEncC.Speech_activity_Q8 <= (int(math.Trunc(1.0*float64(int64(1)<<(8)) + 0.5))))
 	inlines.OpusAssert(psEncC.useInterpolatedNLSFs == 1 || psEncC.indices.NLSFInterpCoef_Q2 == (1<<2))
 
 	/**
@@ -825,7 +825,7 @@ func silk_process_NLSFs(psEncC *SilkChannelEncoder, PredCoef_Q12 [][]int16, pNLS
 	 * ********************
 	 */
 	/* NLSF_mu  = 0.003 - 0.0015 * psEnc.speech_activity; */
-	NLSF_mu_Q20 = inlines.Silk_SMLAWB((int(math.Trunc(0.003*float64(int64(1)<<(20)) + 0.5))), (int(math.Trunc(-0.001*float64(int64(1)<<(28)) + 0.5))), psEncC.speech_activity_Q8)
+	NLSF_mu_Q20 = inlines.Silk_SMLAWB((int(math.Trunc(0.003*float64(int64(1)<<(20)) + 0.5))), (int(math.Trunc(-0.001*float64(int64(1)<<(28)) + 0.5))), psEncC.Speech_activity_Q8)
 	if psEncC.nb_subfr == 2 {
 		/* Multiply by 1.5 for 10 ms packets */
 		NLSF_mu_Q20 = inlines.Silk_ADD_RSHIFT(NLSF_mu_Q20, NLSF_mu_Q20, 1)
@@ -858,7 +858,7 @@ func silk_process_NLSFs(psEncC *SilkChannelEncoder, PredCoef_Q12 [][]int16, pNLS
 
 	//////////////////////////////////////////////////////////////////////////
 	silk_NLSF_encode(psEncC.indices.NLSFIndices, pNLSF_Q15, psEncC.psNLSF_CB, pNLSFW_QW,
-		NLSF_mu_Q20, psEncC.NLSF_MSVQ_Survivors, int(psEncC.indices.signalType))
+		NLSF_mu_Q20, psEncC.NLSF_MSVQ_Survivors, int(psEncC.indices.SignalType))
 
 	/* Convert quantized NLSFs back to LPC coefficients */
 	silk_NLSF2A(PredCoef_Q12[1], pNLSF_Q15, psEncC.predictLPCOrder)

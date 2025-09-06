@@ -228,7 +228,7 @@ func patch_transient_decision(newE [][]int, oldE [][]int, nbEBands int, start in
 }
 
 func compute_mdcts(mode *CeltMode, shortBlocks int, input [][]int, output [][]int, C int, CC int, LM int, upsample int) {
-	overlap := mode.overlap
+	overlap := mode.Overlap
 	N := 0
 	B := 0
 	shift := 0
@@ -1044,7 +1044,7 @@ func celt_synthesis(mode *CeltMode, X [][]int, out_syn [][]int, out_syn_ptrs []i
 	var overlap int
 	var freq []int
 
-	overlap = mode.overlap
+	overlap = mode.Overlap
 	nbEBands = mode.nbEBands
 	N = mode.ShortMdctSize << LM
 

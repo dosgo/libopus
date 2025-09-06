@@ -479,7 +479,7 @@ func (ec *EntropyCoder) Enc_bits(_fl int64, _bits int) {
 
 }
 
-func (ec *EntropyCoder) enc_patch_initial_bits(_val int64, _nbits int) {
+func (ec *EntropyCoder) Enc_patch_initial_bits(_val int64, _nbits int) {
 	shift := EC_SYM_BITS - _nbits
 	mask := int64(((1 << _nbits) - 1) << shift)
 	if ec.Offs > 0 {

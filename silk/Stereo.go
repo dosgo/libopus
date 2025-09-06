@@ -7,7 +7,7 @@ import (
 	"github.com/dosgo/libopus/comm/arrayUtil"
 )
 
-func silk_stereo_decode_pred(
+func Silk_stereo_decode_pred(
 	psRangeDec *comm.EntropyCoder,
 	pred_Q13 []int) {
 	var n int
@@ -33,13 +33,13 @@ func silk_stereo_decode_pred(
 	pred_Q13[0] -= pred_Q13[1]
 }
 
-func silk_stereo_decode_mid_only(
+func Silk_stereo_decode_mid_only(
 	psRangeDec *comm.EntropyCoder,
 	decode_only_mid *comm.BoxedValueInt) {
 	decode_only_mid.Val = psRangeDec.Dec_icdf(SilkTables.Silk_stereo_only_code_mid_iCDF[:], 8)
 }
 
-func silk_stereo_encode_pred(psRangeEnc *comm.EntropyCoder, ix [][]byte) {
+func Silk_stereo_encode_pred(psRangeEnc *comm.EntropyCoder, ix [][]byte) {
 	var n int
 
 	n = 5*int(ix[0][2]) + int(ix[1][2])
@@ -53,7 +53,7 @@ func silk_stereo_encode_pred(psRangeEnc *comm.EntropyCoder, ix [][]byte) {
 	}
 }
 
-func silk_stereo_encode_mid_only(psRangeEnc *comm.EntropyCoder, mid_only_flag byte) {
+func Silk_stereo_encode_mid_only(psRangeEnc *comm.EntropyCoder, mid_only_flag byte) {
 	psRangeEnc.Enc_icdf(int(mid_only_flag), SilkTables.Silk_stereo_only_code_mid_iCDF[:], 8)
 }
 
@@ -104,7 +104,7 @@ func silk_stereo_find_predictor(
 	return pred_Q13
 }
 
-func silk_stereo_LR_to_MS(
+func Silk_stereo_LR_to_MS(
 	state *StereoEncodeState,
 	x1 []int16,
 	x1_ptr int,
@@ -138,10 +138,10 @@ func silk_stereo_LR_to_MS(
 		side[n] = int16(inlines.Silk_SAT16(inlines.Silk_RSHIFT_ROUND(diff, 1)))
 	}
 
-	copy(x1[mid:], state.sMid[:])
-	copy(side[:], state.sSide[:])
-	copy(state.sMid[:], x1[mid+frame_length:])
-	copy(state.sSide[:], side[frame_length:])
+	copy(x1[mid:], state.SMid[:])
+	copy(side[:], state.SSide[:])
+	copy(state.SMid[:], x1[mid+frame_length:])
+	copy(state.SSide[:], side[frame_length:])
 
 	LP_mid = make([]int16, frame_length)
 	HP_mid = make([]int16, frame_length)
@@ -171,8 +171,8 @@ func silk_stereo_LR_to_MS(
 	}
 	smooth_coef_Q16 = inlines.Silk_SMULWB(inlines.Silk_SMULBB(prev_speech_act_Q8, prev_speech_act_Q8), smooth_coef_Q16)
 
-	pred_Q13[0] = silk_stereo_find_predictor(LP_ratio_Q14, LP_mid, LP_side, state.mid_side_amp_Q0[:], 0, frame_length, smooth_coef_Q16)
-	pred_Q13[1] = silk_stereo_find_predictor(HP_ratio_Q14, HP_mid, HP_side, state.mid_side_amp_Q0[:], 2, frame_length, smooth_coef_Q16)
+	pred_Q13[0] = silk_stereo_find_predictor(LP_ratio_Q14, LP_mid, LP_side, state.Mid_side_amp_Q0[:], 0, frame_length, smooth_coef_Q16)
+	pred_Q13[1] = silk_stereo_find_predictor(HP_ratio_Q14, HP_mid, HP_side, state.Mid_side_amp_Q0[:], 2, frame_length, smooth_coef_Q16)
 
 	frac_Q16 = inlines.Silk_SMLABB(*HP_ratio_Q14, *LP_ratio_Q14, 3)
 	frac_Q16 = inlines.Silk_min(frac_Q16, int(math.Trunc(1*float64(1<<16)+0.5)))
@@ -206,7 +206,7 @@ func silk_stereo_LR_to_MS(
 		width_Q14 = int(math.Trunc((1)*(1<<(14)) + 0.5))
 	}
 
-	state.smth_width_Q14 = int16(inlines.Silk_SMLAWB(int(state.smth_width_Q14), width_Q14-int(state.smth_width_Q14), smooth_coef_Q16))
+	state.Smth_width_Q14 = int16(inlines.Silk_SMLAWB(int(state.Smth_width_Q14), width_Q14-int(state.Smth_width_Q14), smooth_coef_Q16))
 
 	*mid_only_flag = 0
 	if toMono != 0 {
@@ -214,10 +214,10 @@ func silk_stereo_LR_to_MS(
 		pred_Q13[0] = 0
 		pred_Q13[1] = 0
 		silk_stereo_quant_pred(pred_Q13, ix)
-	} else if state.width_prev_Q14 == 0 &&
-		(8*total_rate_bps < 13*min_mid_rate_bps || inlines.Silk_SMULWB(frac_Q16, int(state.smth_width_Q14)) < int(math.Trunc(0.05*float64(1<<14)+0.5))) {
-		pred_Q13[0] = inlines.Silk_RSHIFT(inlines.Silk_SMULBB(int(state.smth_width_Q14), pred_Q13[0]), 14)
-		pred_Q13[1] = inlines.Silk_RSHIFT(inlines.Silk_SMULBB(int(state.smth_width_Q14), pred_Q13[1]), 14)
+	} else if state.Width_prev_Q14 == 0 &&
+		(8*total_rate_bps < 13*min_mid_rate_bps || inlines.Silk_SMULWB(frac_Q16, int(state.Smth_width_Q14)) < int(math.Trunc(0.05*float64(1<<14)+0.5))) {
+		pred_Q13[0] = inlines.Silk_RSHIFT(inlines.Silk_SMULBB(int(state.Smth_width_Q14), pred_Q13[0]), 14)
+		pred_Q13[1] = inlines.Silk_RSHIFT(inlines.Silk_SMULBB(int(state.Smth_width_Q14), pred_Q13[1]), 14)
 		silk_stereo_quant_pred(pred_Q13, ix)
 		width_Q14 = 0
 		pred_Q13[0] = 0
@@ -225,22 +225,22 @@ func silk_stereo_LR_to_MS(
 		mid_side_rates_bps[0] = total_rate_bps
 		mid_side_rates_bps[1] = 0
 		*mid_only_flag = 1
-	} else if state.width_prev_Q14 != 0 &&
-		(8*total_rate_bps < 11*min_mid_rate_bps || inlines.Silk_SMULWB(frac_Q16, int(state.smth_width_Q14)) < int(math.Trunc(0.02*float64(1<<14)+0.5))) {
-		pred_Q13[0] = inlines.Silk_RSHIFT(inlines.Silk_SMULBB(int(state.smth_width_Q14), pred_Q13[0]), 14)
-		pred_Q13[1] = inlines.Silk_RSHIFT(inlines.Silk_SMULBB(int(state.smth_width_Q14), pred_Q13[1]), 14)
+	} else if state.Width_prev_Q14 != 0 &&
+		(8*total_rate_bps < 11*min_mid_rate_bps || inlines.Silk_SMULWB(frac_Q16, int(state.Smth_width_Q14)) < int(math.Trunc(0.02*float64(1<<14)+0.5))) {
+		pred_Q13[0] = inlines.Silk_RSHIFT(inlines.Silk_SMULBB(int(state.Smth_width_Q14), pred_Q13[0]), 14)
+		pred_Q13[1] = inlines.Silk_RSHIFT(inlines.Silk_SMULBB(int(state.Smth_width_Q14), pred_Q13[1]), 14)
 		silk_stereo_quant_pred(pred_Q13, ix)
 		width_Q14 = 0
 		pred_Q13[0] = 0
 		pred_Q13[1] = 0
-	} else if int(state.smth_width_Q14) > int(math.Trunc(0.95*float64(1<<14)+0.5)) {
+	} else if int(state.Smth_width_Q14) > int(math.Trunc(0.95*float64(1<<14)+0.5)) {
 		silk_stereo_quant_pred(pred_Q13, ix)
 		width_Q14 = int(math.Trunc(1*float64(1<<14) + 0.5))
 	} else {
-		pred_Q13[0] = inlines.Silk_RSHIFT(inlines.Silk_SMULBB(int(state.smth_width_Q14), pred_Q13[0]), 14)
-		pred_Q13[1] = inlines.Silk_RSHIFT(inlines.Silk_SMULBB(int(state.smth_width_Q14), pred_Q13[1]), 14)
+		pred_Q13[0] = inlines.Silk_RSHIFT(inlines.Silk_SMULBB(int(state.Smth_width_Q14), pred_Q13[0]), 14)
+		pred_Q13[1] = inlines.Silk_RSHIFT(inlines.Silk_SMULBB(int(state.Smth_width_Q14), pred_Q13[1]), 14)
 		silk_stereo_quant_pred(pred_Q13, ix)
-		width_Q14 = int(state.smth_width_Q14)
+		width_Q14 = int(state.Smth_width_Q14)
 	}
 
 	if *mid_only_flag == 1 {
@@ -259,15 +259,15 @@ func silk_stereo_LR_to_MS(
 		mid_side_rates_bps[0] = inlines.Silk_max_int(1, total_rate_bps-mid_side_rates_bps[1])
 	}
 
-	pred0_Q13 = -int(state.pred_prev_Q13[0])
-	pred1_Q13 = -int(state.pred_prev_Q13[1])
-	w_Q24 = inlines.Silk_LSHIFT(int(state.width_prev_Q14), 10)
+	pred0_Q13 = -int(state.Pred_prev_Q13[0])
+	pred1_Q13 = -int(state.Pred_prev_Q13[1])
+	w_Q24 = inlines.Silk_LSHIFT(int(state.Width_prev_Q14), 10)
 	denom_Q16 = inlines.Silk_DIV32_16(1<<16, SilkConstants.STEREO_INTERP_LEN_MS*fs_kHz)
 	//delta0_Q13 = 0 - inlines.Silk_RSHIFT_ROUND(inlines.Silk_SMULBB(pred_Q13[0]-int(state.pred_prev_Q13[0]), denom_Q16), 16)
-	delta0_Q13 = 0 - inlines.Silk_RSHIFT_ROUND(inlines.Silk_SMULBB(pred_Q13[0]-int(state.pred_prev_Q13[0]), denom_Q16), 16)
-	delta1_Q13 = 0 - inlines.Silk_RSHIFT_ROUND(inlines.Silk_SMULBB(pred_Q13[1]-int(state.pred_prev_Q13[1]), denom_Q16), 16)
+	delta0_Q13 = 0 - inlines.Silk_RSHIFT_ROUND(inlines.Silk_SMULBB(pred_Q13[0]-int(state.Pred_prev_Q13[0]), denom_Q16), 16)
+	delta1_Q13 = 0 - inlines.Silk_RSHIFT_ROUND(inlines.Silk_SMULBB(pred_Q13[1]-int(state.Pred_prev_Q13[1]), denom_Q16), 16)
 
-	deltaw_Q24 = inlines.Silk_LSHIFT(inlines.Silk_SMULWB(width_Q14-int(state.width_prev_Q14), denom_Q16), 10)
+	deltaw_Q24 = inlines.Silk_LSHIFT(inlines.Silk_SMULWB(width_Q14-int(state.Width_prev_Q14), denom_Q16), 10)
 
 	for n = 0; n < SilkConstants.STEREO_INTERP_LEN_MS*fs_kHz; n++ {
 		pred0_Q13 += delta0_Q13
@@ -295,12 +295,12 @@ func silk_stereo_LR_to_MS(
 		sum = inlines.Silk_SMLAWB(sum, inlines.Silk_LSHIFT(int(x1[mid+n+1]), 11), pred1_Q13)
 		x2[x2_ptr+n-1] = int16(inlines.Silk_SAT16(inlines.Silk_RSHIFT_ROUND(sum, 8)))
 	}
-	state.pred_prev_Q13[0] = int16(pred_Q13[0])
-	state.pred_prev_Q13[1] = int16(pred_Q13[1])
-	state.width_prev_Q14 = int16(width_Q14)
+	state.Pred_prev_Q13[0] = int16(pred_Q13[0])
+	state.Pred_prev_Q13[1] = int16(pred_Q13[1])
+	state.Width_prev_Q14 = int16(width_Q14)
 }
 
-func silk_stereo_MS_to_LR(
+func Silk_stereo_MS_to_LR(
 	state *StereoDecodeState,
 	x1 []int16,
 	x1_ptr int,
@@ -312,16 +312,16 @@ func silk_stereo_MS_to_LR(
 	var n, denom_Q16, delta0_Q13, delta1_Q13 int
 	var sum, diff, pred0_Q13, pred1_Q13 int
 
-	copy(x1[x1_ptr:], state.sMid[:])
-	copy(x2[x2_ptr:], state.sSide[:])
-	copy(state.sMid[:], x1[x1_ptr+frame_length:])
-	copy(state.sSide[:], x2[x2_ptr+frame_length:])
+	copy(x1[x1_ptr:], state.SMid[:])
+	copy(x2[x2_ptr:], state.SSide[:])
+	copy(state.SMid[:], x1[x1_ptr+frame_length:])
+	copy(state.SSide[:], x2[x2_ptr+frame_length:])
 
-	pred0_Q13 = int(state.pred_prev_Q13[0])
-	pred1_Q13 = int(state.pred_prev_Q13[1])
+	pred0_Q13 = int(state.Pred_prev_Q13[0])
+	pred1_Q13 = int(state.Pred_prev_Q13[1])
 	denom_Q16 = inlines.Silk_DIV32_16(1<<16, SilkConstants.STEREO_INTERP_LEN_MS*fs_kHz)
-	delta0_Q13 = inlines.Silk_RSHIFT_ROUND(inlines.Silk_SMULBB(pred_Q13[0]-int(state.pred_prev_Q13[0]), denom_Q16), 16)
-	delta1_Q13 = inlines.Silk_RSHIFT_ROUND(inlines.Silk_SMULBB(pred_Q13[1]-int(state.pred_prev_Q13[1]), denom_Q16), 16)
+	delta0_Q13 = inlines.Silk_RSHIFT_ROUND(inlines.Silk_SMULBB(pred_Q13[0]-int(state.Pred_prev_Q13[0]), denom_Q16), 16)
+	delta1_Q13 = inlines.Silk_RSHIFT_ROUND(inlines.Silk_SMULBB(pred_Q13[1]-int(state.Pred_prev_Q13[1]), denom_Q16), 16)
 	for n = 0; n < SilkConstants.STEREO_INTERP_LEN_MS*fs_kHz; n++ {
 		pred0_Q13 += delta0_Q13
 		pred1_Q13 += delta1_Q13
@@ -338,8 +338,8 @@ func silk_stereo_MS_to_LR(
 		sum = inlines.Silk_SMLAWB(sum, inlines.Silk_LSHIFT(int(x1[x1_ptr+n+1]), 11), pred1_Q13)
 		x2[x2_ptr+n+1] = int16(inlines.Silk_SAT16(inlines.Silk_RSHIFT_ROUND(sum, 8)))
 	}
-	state.pred_prev_Q13[0] = int16(pred_Q13[0])
-	state.pred_prev_Q13[1] = int16(pred_Q13[1])
+	state.Pred_prev_Q13[0] = int16(pred_Q13[0])
+	state.Pred_prev_Q13[1] = int16(pred_Q13[1])
 
 	for n = 0; n < frame_length; n++ {
 		sum = int(x1[x1_ptr+n+1]) + int(x2[x2_ptr+n+1])

@@ -2,7 +2,7 @@ package silk
 
 import "github.com/dosgo/libopus/comm"
 
-func silk_encode_indices(psEncC *SilkChannelEncoder, psRangeEnc *comm.EntropyCoder, FrameIndex int, encode_LBRR int, condCoding int) {
+func Silk_encode_indices(psEncC *SilkChannelEncoder, psRangeEnc *comm.EntropyCoder, FrameIndex int, encode_LBRR int, condCoding int) {
 	var i, k, typeOffset int
 	var encode_absolute_lagIndex, delta_lagIndex int
 	ec_ix := make([]int16, SilkConstants.MAX_LPC_ORDER)
@@ -10,7 +10,7 @@ func silk_encode_indices(psEncC *SilkChannelEncoder, psRangeEnc *comm.EntropyCod
 	var psIndices *SideInfoIndices
 
 	if encode_LBRR != 0 {
-		psIndices = psEncC.indices_LBRR[FrameIndex]
+		psIndices = psEncC.Indices_LBRR[FrameIndex]
 	} else {
 		psIndices = psEncC.indices
 	}
@@ -23,7 +23,7 @@ func silk_encode_indices(psEncC *SilkChannelEncoder, psRangeEnc *comm.EntropyCod
 	 * ****************************************
 	 */
 
-	typeOffset = 2*int(psIndices.signalType) + int(psIndices.quantOffsetType)
+	typeOffset = 2*int(psIndices.SignalType) + int(psIndices.QuantOffsetType)
 	inlines.OpusAssert(typeOffset >= 0 && typeOffset < 6)
 	inlines.OpusAssert(encode_LBRR == 0 || typeOffset >= 2)
 
@@ -49,7 +49,7 @@ func silk_encode_indices(psEncC *SilkChannelEncoder, psRangeEnc *comm.EntropyCod
 		/* independent coding, in two stages: MSB bits followed by 3 LSBs */
 		inlines.OpusAssert(psIndices.GainsIndices[0] >= 0 && psIndices.GainsIndices[0] < N_LEVELS_QGAIN)
 
-		psRangeEnc.Enc_icdf(inlines.Silk_RSHIFT(int(psIndices.GainsIndices[0]), 3), silk_gain_iCDF[psIndices.signalType], 8)
+		psRangeEnc.Enc_icdf(inlines.Silk_RSHIFT(int(psIndices.GainsIndices[0]), 3), silk_gain_iCDF[psIndices.SignalType], 8)
 
 		psRangeEnc.Enc_icdf(int(psIndices.GainsIndices[0]&7), silk_uniform8_iCDF, 8)
 	}
@@ -70,7 +70,7 @@ func silk_encode_indices(psEncC *SilkChannelEncoder, psRangeEnc *comm.EntropyCod
 	 * *************
 	 */
 
-	psRangeEnc.Enc_icdf_offset(int(psIndices.NLSFIndices[0]), psEncC.psNLSF_CB.CB1_iCDF, int(int16(psIndices.signalType>>1)*psEncC.psNLSF_CB.nVectors), 8)
+	psRangeEnc.Enc_icdf_offset(int(psIndices.NLSFIndices[0]), psEncC.psNLSF_CB.CB1_iCDF, int(int16(psIndices.SignalType>>1)*psEncC.psNLSF_CB.nVectors), 8)
 	silk_NLSF_unpack(ec_ix, pred_Q8, psEncC.psNLSF_CB, int(psIndices.NLSFIndices[0]))
 	inlines.OpusAssert(int(psEncC.psNLSF_CB.order) == psEncC.predictLPCOrder)
 	for i = 0; i < int(psEncC.psNLSF_CB.order); i++ {
@@ -92,7 +92,7 @@ func silk_encode_indices(psEncC *SilkChannelEncoder, psRangeEnc *comm.EntropyCod
 		psRangeEnc.Enc_icdf(int(psIndices.NLSFInterpCoef_Q2), silk_NLSF_interpolation_factor_iCDF, 8)
 	}
 
-	if psIndices.signalType == TYPE_VOICED {
+	if psIndices.SignalType == TYPE_VOICED {
 		/**
 		 * ******************
 		 */
@@ -121,9 +121,9 @@ func silk_encode_indices(psEncC *SilkChannelEncoder, psRangeEnc *comm.EntropyCod
 		if encode_absolute_lagIndex != 0 {
 			/* Absolute encoding */
 			var pitch_high_bits, pitch_low_bits int
-			pitch_high_bits = inlines.Silk_DIV32_16(int(psIndices.lagIndex), inlines.Silk_RSHIFT(psEncC.fs_kHz, 1))
-			pitch_low_bits = int(psIndices.lagIndex) - inlines.Silk_SMULBB(pitch_high_bits, inlines.Silk_RSHIFT(psEncC.fs_kHz, 1))
-			inlines.OpusAssert(pitch_low_bits < psEncC.fs_kHz/2)
+			pitch_high_bits = inlines.Silk_DIV32_16(int(psIndices.lagIndex), inlines.Silk_RSHIFT(psEncC.Fs_kHz, 1))
+			pitch_low_bits = int(psIndices.lagIndex) - inlines.Silk_SMULBB(pitch_high_bits, inlines.Silk_RSHIFT(psEncC.Fs_kHz, 1))
+			inlines.OpusAssert(pitch_low_bits < psEncC.Fs_kHz/2)
 			inlines.OpusAssert(pitch_high_bits < 32)
 			psRangeEnc.Enc_icdf(pitch_high_bits, silk_pitch_lag_iCDF, 8)
 			psRangeEnc.Enc_icdf(pitch_low_bits, psEncC.pitch_lag_low_bits_iCDF, 8)
@@ -132,7 +132,7 @@ func silk_encode_indices(psEncC *SilkChannelEncoder, psRangeEnc *comm.EntropyCod
 
 		/* Countour index */
 		inlines.OpusAssert(psIndices.contourIndex >= 0)
-		inlines.OpusAssert((psIndices.contourIndex < 34 && psEncC.fs_kHz > 8 && psEncC.nb_subfr == 4) || (psIndices.contourIndex < 11 && psEncC.fs_kHz == 8 && psEncC.nb_subfr == 4) || (psIndices.contourIndex < 12 && psEncC.fs_kHz > 8 && psEncC.nb_subfr == 2) || (psIndices.contourIndex < 3 && psEncC.fs_kHz == 8 && psEncC.nb_subfr == 2))
+		inlines.OpusAssert((psIndices.contourIndex < 34 && psEncC.Fs_kHz > 8 && psEncC.nb_subfr == 4) || (psIndices.contourIndex < 11 && psEncC.Fs_kHz == 8 && psEncC.nb_subfr == 4) || (psIndices.contourIndex < 12 && psEncC.Fs_kHz > 8 && psEncC.nb_subfr == 2) || (psIndices.contourIndex < 3 && psEncC.Fs_kHz == 8 && psEncC.nb_subfr == 2))
 
 		psRangeEnc.Enc_icdf(int(psIndices.contourIndex), psEncC.pitch_contour_iCDF, 8)
 
@@ -169,7 +169,7 @@ func silk_encode_indices(psEncC *SilkChannelEncoder, psRangeEnc *comm.EntropyCod
 		inlines.OpusAssert(condCoding == 0 || psIndices.LTP_scaleIndex == 0)
 	}
 
-	psEncC.ec_prevSignalType = int(psIndices.signalType)
+	psEncC.ec_prevSignalType = int(psIndices.SignalType)
 
 	/**
 	 * ************

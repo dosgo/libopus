@@ -326,7 +326,7 @@ var silk_stereo_only_code_mid_iCDF = []int16{64, 0}
 
 var silk_LBRR_flags_2_iCDF = []int16{203, 150, 0}
 var silk_LBRR_flags_3_iCDF = []int16{215, 195, 166, 125, 110, 82, 0}
-var silk_LBRR_flags_iCDF_ptr = [][]int16{
+var Silk_LBRR_flags_iCDF_ptr = [][]int16{
 	silk_LBRR_flags_2_iCDF,
 	silk_LBRR_flags_3_iCDF,
 }
