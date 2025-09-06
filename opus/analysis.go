@@ -4,7 +4,7 @@ import (
 	"math"
 
 	"github.com/dosgo/libopus/celt"
-	"github.com/dosgo/libopus/opusConstants"
+	"github.com/dosgo/libopus/comm/opusConstants"
 )
 
 const (

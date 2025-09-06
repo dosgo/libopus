@@ -5,7 +5,7 @@ import (
 
 	"github.com/dosgo/libopus/comm"
 	"github.com/dosgo/libopus/comm/arrayUtil"
-	"github.com/dosgo/libopus/opusConstants"
+	"github.com/dosgo/libopus/comm/opusConstants"
 )
 
 type CeltEncoder struct {
