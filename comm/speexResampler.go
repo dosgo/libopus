@@ -1,6 +1,7 @@
 package comm
 
 import (
+	"fmt"
 	"math"
 	"sync"
 )
@@ -34,9 +35,10 @@ type SpeexResampler struct {
 	mem           []float64
 	sincTable     []float64
 	sincTableLen  int
-	resamplerFunc func(channelIndex int, input []float64, inLen int, output []float64, outLen int) (int, int)
-	inStride      int
-	outStride     int
+	resampler_ptr func(channel_index int, input []float64, input_ptr int, in_len *int, output []float64, output_ptr int, out_len *int) int
+
+	inStride  int
+	outStride int
 }
 
 // NewSpeexResampler 创建新的重采样器
@@ -61,7 +63,7 @@ func NewSpeexResamplerFractional(nbChannels, ratioNum, ratioDen, inRate, outRate
 		sampFracNum:  make([]int, nbChannels),
 	}
 
-	r.SetQuality(quality)
+	r.quality = quality
 	r.SetRateFraction(ratioNum, ratioDen, inRate, outRate)
 	r.updateFilter()
 	r.initialised = 1
@@ -140,154 +142,149 @@ var (
 	}
 )
 
-func minInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func maxInt(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-func (r *SpeexResampler) float2int(x float64) int16 {
-	if x < -32768 {
-		return -32768
-	}
-	if x > 32767 {
-		return 32767
-	}
-	return int16(x)
-}
-
 func computeFunc(x float64, f *funcDef) float64 {
-	y := float64(x) * float64(f.oversample)
-	ind := int(math.Floor(y))
-	frac := y - float64(ind)
+	var y, frac float64
+	var interp0, interp1, interp2, interp3 float64
+	var ind int
+	y = x * float64(f.oversample)
+	ind = int(math.Floor(y))
+	frac = (y - float64(ind))
+	/* CSE with handle the repeated powers */
+	interp3 = -0.1666666667*frac + 0.1666666667*(frac*frac*frac)
+	interp2 = frac + 0.5*(frac*frac) - 0.5*(frac*frac*frac)
+	/*interp[2] = 1.f - 0.5f*frac - frac*frac + 0.5f*frac*frac*frac;*/
+	interp0 = -0.3333333333*frac + 0.5*(frac*frac) - 0.1666666667*(frac*frac*frac)
+	/* Just to make sure we don't have rounding problems */
+	interp1 = 1.0 - interp3 - interp2 - interp0
 
-	interp3 := -0.1666666667*frac + 0.1666666667*math.Pow(frac, 3)
-	interp2 := frac + 0.5*math.Pow(frac, 2) - 0.5*math.Pow(frac, 3)
-	interp0 := -0.3333333333*frac + 0.5*math.Pow(frac, 2) - 0.1666666667*math.Pow(frac, 3)
-	interp1 := 1.0 - interp3 - interp2 - interp0
-
+	/*sum = frac*accum[1] + (1-frac)*accum[2];*/
 	return interp0*f.table[ind] + interp1*f.table[ind+1] + interp2*f.table[ind+2] + interp3*f.table[ind+3]
+
 }
 
 func sinc(cutoff, x float64, N int, window *funcDef) float64 {
-	/*fprintf (stderr, "%f ", x);*/
-	xx := x * cutoff
+	var xx = x * cutoff
 	if math.Abs(x) < 1e-6 {
 		return cutoff
+
 	} else if math.Abs(x) > 0.5*float64(N) {
 		return 0
 	}
 	/*FIXME: Can it really be any slower than this? */
 	return float64(cutoff * math.Sin(math.Pi*xx) / (math.Pi * xx) * computeFunc(math.Abs(2.0*x/float64(N)), window))
-
-}
-
-func abs(x float64) float64 {
-	if x < 0 {
-		return -x
-	}
-	return x
 }
 
 func cubicCoef(frac float64, interp []float64) {
 	interp[0] = -0.16667*frac + 0.16667*frac*frac*frac
 	interp[1] = frac + 0.5*frac*frac - 0.5*frac*frac*frac
+	/*interp[2] = 1.f - 0.5f*frac - frac*frac + 0.5f*frac*frac*frac;*/
 	interp[3] = -0.33333*frac + 0.5*frac*frac - 0.16667*frac*frac*frac
+	/* Just to make sure we don't have rounding problems */
 	interp[2] = 1.0 - interp[0] - interp[1] - interp[3]
 }
 
-func (r *SpeexResampler) resamplerBasicDirectSingle(channelIndex int, input []float64, inLen int, output []float64, outLen int) (int, int) {
-	N := r.filtLen
-	outSample := 0
-	lastSample := r.lastSample[channelIndex]
-	sampFracNum := r.sampFracNum[channelIndex]
+func (r *SpeexResampler) resamplerBasicDirectSingle(channel_index int, input []float64, input_ptr int, in_len *int, output []float64, output_ptr int, out_len *int) int {
+	var N = r.filtLen
+	var out_sample = 0
+	var last_sample = r.lastSample[channel_index]
+	var samp_frac_num = r.sampFracNum[channel_index]
 
-	for lastSample < inLen && outSample < outLen {
-		sinct := sampFracNum * N
-		sum := float64(0)
-		for j := 0; j < N; j++ {
-			sum += r.sincTable[sinct+j] * input[lastSample+j]
+	var sum float64
+
+	for !(last_sample >= *in_len || out_sample >= *out_len) {
+		var sinct = samp_frac_num * N
+		var iptr = input_ptr + last_sample
+
+		var j int
+		sum = 0
+		for j = 0; j < N; j++ {
+			sum += r.sincTable[sinct+j] * input[iptr+j]
 		}
 
-		output[outSample] = sum
-		outSample++
-		lastSample += r.intAdvance
-		sampFracNum += r.fracAdvance
-		if sampFracNum >= r.denRate {
-			sampFracNum -= r.denRate
-			lastSample++
+		output[output_ptr+(r.outStride*out_sample)] = sum
+		out_sample++
+		last_sample += r.intAdvance
+		samp_frac_num += r.fracAdvance
+		if samp_frac_num >= r.denRate {
+			samp_frac_num -= r.denRate
+			last_sample++
 		}
 	}
 
-	r.lastSample[channelIndex] = lastSample
-	r.sampFracNum[channelIndex] = sampFracNum
-	return outSample, lastSample
+	r.lastSample[channel_index] = last_sample
+	r.sampFracNum[channel_index] = samp_frac_num
+	return out_sample
 }
 
-func (r *SpeexResampler) resamplerBasicInterpolateSingle(channelIndex int, input []float64, inLen int, output []float64, outLen int) (int, int) {
-	N := r.filtLen
-	outSample := 0
-	lastSample := r.lastSample[channelIndex]
-	sampFracNum := r.sampFracNum[channelIndex]
-
+func (r *SpeexResampler) resamplerBasicInterpolateSingle(channel_index int, input []float64, input_ptr int, in_len *int, output []float64, output_ptr int, out_len *int) int {
+	var N = r.filtLen
+	var out_sample = 0
+	var last_sample = r.lastSample[channel_index]
+	var samp_frac_num = r.sampFracNum[channel_index]
+	var sum float64
 	interp := make([]float64, 4)
 	accum := make([]float64, 4)
 
-	for lastSample < inLen && outSample < outLen {
-		offset := sampFracNum * r.oversample / r.denRate
-		frac := float64((sampFracNum*r.oversample)%r.denRate) / float64(r.denRate)
+	for !(last_sample >= *in_len || out_sample >= *out_len) {
+		var iptr = input_ptr + last_sample
 
-		for i := range accum {
-			accum[i] = 0
-		}
+		var offset = samp_frac_num * r.oversample / r.denRate
+		var frac = (float64((samp_frac_num * r.oversample) % r.denRate)) / float64(r.denRate)
 
-		for j := 0; j < N; j++ {
-			currIn := input[lastSample+j]
-			accum[0] += currIn * r.sincTable[4+(j+1)*r.oversample-offset-2]
-			accum[1] += currIn * r.sincTable[4+(j+1)*r.oversample-offset-1]
-			accum[2] += currIn * r.sincTable[4+(j+1)*r.oversample-offset]
-			accum[3] += currIn * r.sincTable[4+(j+1)*r.oversample-offset+1]
+		var j int
+		accum[0] = 0
+		accum[1] = 0
+		accum[2] = 0
+		accum[3] = 0
+
+		for j = 0; j < N; j++ {
+
+			var curr_in = input[iptr+j]
+			accum[0] += curr_in * r.sincTable[4+(j+1)*r.oversample-offset-2]
+			accum[1] += curr_in * r.sincTable[4+(j+1)*r.oversample-offset-1]
+			accum[2] += curr_in * r.sincTable[4+(j+1)*r.oversample-offset]
+			accum[3] += curr_in * r.sincTable[4+(j+1)*r.oversample-offset+1]
 		}
 
 		cubicCoef(frac, interp)
-		sum := interp[0]*accum[0] + interp[1]*accum[1] + interp[2]*accum[2] + interp[3]*accum[3]
+		sum = (interp[0] * accum[0]) +
+			(interp[1] * accum[1]) +
+			(interp[2] * accum[2]) +
+			(interp[3] * accum[3])
 
-		output[outSample] = sum
-		outSample++
-		lastSample += r.intAdvance
-		sampFracNum += r.fracAdvance
-		if sampFracNum >= r.denRate {
-			sampFracNum -= r.denRate
-			lastSample++
+		output[output_ptr+(r.outStride*out_sample)] = sum
+		out_sample++
+		last_sample += r.intAdvance
+		samp_frac_num += r.fracAdvance
+		if samp_frac_num >= r.denRate {
+
+			samp_frac_num -= r.denRate
+			last_sample++
 		}
 	}
 
-	r.lastSample[channelIndex] = lastSample
-	r.sampFracNum[channelIndex] = sampFracNum
-	return outSample, lastSample
+	r.lastSample[channel_index] = last_sample
+	r.sampFracNum[channel_index] = samp_frac_num
+	return out_sample
 }
 
 func (r *SpeexResampler) updateFilter() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	oldLength := r.filtLen
-	qmap := qualityMap[r.quality]
-	r.oversample = qmap.oversample
-	r.filtLen = qmap.baseLength
+	var old_length int
 
+	old_length = r.filtLen
+	r.oversample = qualityMap[r.quality].oversample
+	r.filtLen = qualityMap[r.quality].baseLength
 	if r.numRate > r.denRate {
-		r.cutoff = qmap.downsampleBandwidth * float64(r.denRate) / float64(r.numRate)
+
+		/* down-sampling */
+		r.cutoff = qualityMap[r.quality].downsampleBandwidth * float64(r.denRate) / float64(r.numRate)
+		/* FIXME: divide the numerator and denominator by a certain amount if they're too large */
 		r.filtLen = r.filtLen * r.numRate / r.denRate
-		r.filtLen = ((r.filtLen - 1) &^ 0x7) + 8
+		/* Round up to make sure we have a multiple of 8 */
+		r.filtLen = ((r.filtLen - 1) & (^0x7)) + 8
 		if 2*r.denRate < r.numRate {
 			r.oversample >>= 1
 		}
@@ -304,297 +301,355 @@ func (r *SpeexResampler) updateFilter() {
 			r.oversample = 1
 		}
 	} else {
-		r.cutoff = qmap.upsampleBandwidth
+		/* up-sampling */
+		r.cutoff = qualityMap[r.quality].upsampleBandwidth
 	}
 
 	if r.denRate <= 16*(r.oversample+8) {
-		tableSize := r.filtLen * r.denRate
-		if len(r.sincTable) < tableSize {
-			r.sincTable = make([]float64, tableSize)
+		var i int
+		if r.sincTable == nil {
+			r.sincTable = make([]float64, r.filtLen*r.denRate)
+		} else if r.sincTableLen < r.filtLen*r.denRate {
+			r.sincTable = make([]float64, r.filtLen*r.denRate)
+			r.sincTableLen = r.filtLen * r.denRate
 		}
-
-		for i := 0; i < r.denRate; i++ {
-			for j := 0; j < r.filtLen; j++ {
-				pos := j - r.filtLen/2 + 1
-				r.sincTable[i*r.filtLen+j] = sinc(
-					r.cutoff,
-					float64(pos)-float64(i)/float64(r.denRate),
-					r.filtLen,
-					qmap.windowFunc,
-				)
+		for i = 0; i < r.denRate; i++ {
+			var j int
+			for j = 0; j < r.filtLen; j++ {
+				r.sincTable[i*r.filtLen+j] = sinc(r.cutoff, float64(float64(j-r.filtLen/2+1)-(float64(i))/float64(r.denRate)), r.filtLen, qualityMap[r.quality].windowFunc)
 			}
 		}
-		r.resamplerFunc = r.resamplerBasicDirectSingle
+
+		r.resampler_ptr = r.resamplerBasicDirectSingle
+		fmt.Printf("resamplerBasicDirectSingle\r\n")
+
+		/*fprintf (stderr, "resampler uses direct sinc table and normalised cutoff %f\n", cutoff);*/
 	} else {
-		tableSize := r.filtLen*r.oversample + 8
-		if len(r.sincTable) < tableSize {
-			r.sincTable = make([]float64, tableSize)
+		var i int
+		if r.sincTable == nil {
+			r.sincTable = make([]float64, r.filtLen*r.oversample+8)
+		} else if r.sincTableLen < r.filtLen*r.oversample+8 {
+			r.sincTable = make([]float64, r.filtLen*r.oversample+8)
+			r.sincTableLen = r.filtLen*r.oversample + 8
 		}
-
-		for i := -4; i < r.oversample*r.filtLen+4; i++ {
-			idx := i + 4
-			pos := float64(i)/float64(r.oversample) - float64(r.filtLen)/2
-			r.sincTable[idx] = sinc(r.cutoff, pos, r.filtLen, qmap.windowFunc)
+		for i = -4; i < (int)(r.oversample*r.filtLen+4); i++ {
+			r.sincTable[i+4] = sinc(r.cutoff, float64(i/r.oversample-r.filtLen/2), r.filtLen, qualityMap[r.quality].windowFunc)
 		}
-		r.resamplerFunc = r.resamplerBasicInterpolateSingle
+		r.resampler_ptr = r.resamplerBasicInterpolateSingle
+		/*fprintf (stderr, "resampler uses interpolated sinc table and normalised cutoff %f\n", cutoff);*/
 	}
-
 	r.intAdvance = r.numRate / r.denRate
 	r.fracAdvance = r.numRate % r.denRate
 
+	/* Here's the place where we update the filter memory to take into account
+	   the change in filter length. It's probably the messiest part of the code
+	   due to handling of lots of corner cases. */
 	if r.mem == nil {
+
 		r.memAllocSize = r.filtLen - 1 + r.bufferSize
 		r.mem = make([]float64, r.nbChannels*r.memAllocSize)
+		for i = 0; i < r.nbChannels*r.memAllocSize; i++ {
+			r.mem[i] = 0
+		}
+		/*speex_warning("init filter");*/
 	} else if r.started == 0 {
+		var i int
 		r.memAllocSize = r.filtLen - 1 + r.bufferSize
 		r.mem = make([]float64, r.nbChannels*r.memAllocSize)
-	} else if r.filtLen > oldLength {
-		oldAllocSize := r.memAllocSize
-		if r.filtLen-1+r.bufferSize > r.memAllocSize {
+		for i = 0; i < r.nbChannels*r.memAllocSize; i++ {
+			r.mem[i] = 0
+		}
+		/*speex_warning("reinit filter");*/
+	} else if r.filtLen > old_length {
+		var i int
+		/* Increase the filter length */
+		/*speex_warning("increase filter size");*/
+		var old_alloc_size = r.memAllocSize
+		if (r.filtLen - 1 + r.bufferSize) > r.memAllocSize {
 			r.memAllocSize = r.filtLen - 1 + r.bufferSize
 			r.mem = make([]float64, r.nbChannels*r.memAllocSize)
 		}
+		for i = r.nbChannels - 1; i >= 0; i-- {
+			var j int
+			var olen = old_length
+			/*if (st.magic_samples[i])*/
+			{
+				/* Try and remove the magic samples as if nothing had happened */
 
-		for i := 0; i < r.nbChannels; i++ {
-			offset := i * r.memAllocSize
-			oldOffset := i * oldAllocSize
-			olen := oldLength
-
-			if r.magicSamples[i] > 0 {
-				olen = oldLength + 2*r.magicSamples[i]
-				for j := oldLength - 2 + r.magicSamples[i]; j >= 0; j-- {
-					r.mem[offset+j+r.magicSamples[i]] = r.mem[oldOffset+j]
+				/* FIXME: This is wrong but for now we need it to avoid going over the array bounds */
+				olen = old_length + 2*r.magicSamples[i]
+				for j = old_length - 2 + r.magicSamples[i]; j >= 0; j-- {
+					r.mem[i*r.memAllocSize+j+r.magicSamples[i]] = r.mem[i*old_alloc_size+j]
 				}
-				for j := 0; j < r.magicSamples[i]; j++ {
-					r.mem[offset+j] = 0
+				for j = 0; j < r.magicSamples[i]; j++ {
+					r.mem[i*r.memAllocSize+j] = 0
 				}
 				r.magicSamples[i] = 0
 			}
-
 			if r.filtLen > olen {
-				for j := 0; j < olen-1; j++ {
-					r.mem[offset+(r.filtLen-2-j)] = r.mem[offset+(olen-2-j)]
+				/* If the new filter length is still bigger than the "augmented" length */
+				/* Copy data going backward */
+				for j = 0; j < olen-1; j++ {
+					r.mem[i*r.memAllocSize+(r.filtLen-2-j)] = r.mem[i*r.memAllocSize+(olen-2-j)]
 				}
-				for j := olen - 1; j < r.filtLen-1; j++ {
-					r.mem[offset+(r.filtLen-2-j)] = 0
+				/* Then put zeros for lack of anything better */
+				for ; j < r.filtLen-1; j++ {
+					r.mem[i*r.memAllocSize+(r.filtLen-2-j)] = 0
 				}
+				/* Adjust last_sample */
 				r.lastSample[i] += (r.filtLen - olen) / 2
 			} else {
+				/* Put back some of the magic! */
 				r.magicSamples[i] = (olen - r.filtLen) / 2
-				for j := 0; j < r.filtLen-1+r.magicSamples[i]; j++ {
-					r.mem[offset+j] = r.mem[offset+j+r.magicSamples[i]]
+				for j = 0; j < r.filtLen-1+r.magicSamples[i]; j++ {
+					r.mem[i*r.memAllocSize+j] = r.mem[i*r.memAllocSize+j+r.magicSamples[i]]
 				}
 			}
 		}
-	} else if r.filtLen < oldLength {
-		for i := 0; i < r.nbChannels; i++ {
-			oldMagic := r.magicSamples[i]
-			r.magicSamples[i] = (oldLength - r.filtLen) / 2
-			offset := i * r.memAllocSize
-
-			for j := 0; j < r.filtLen-1+r.magicSamples[i]+oldMagic; j++ {
-				r.mem[offset+j] = r.mem[offset+j+r.magicSamples[i]]
+	} else if r.filtLen < old_length {
+		var i int
+		/* Reduce filter length, this a bit tricky. We need to store some of the memory as "magic"
+		   samples so they can be used directly as input the next time(s) */
+		for i = 0; i < r.nbChannels; i++ {
+			var j int
+			var old_magic = r.magicSamples[i]
+			r.magicSamples[i] = (old_length - r.filtLen) / 2
+			/* We must copy some of the memory that's no longer used */
+			/* Copy data going backward */
+			for j = 0; j < r.filtLen-1+r.magicSamples[i]+old_magic; j++ {
+				r.mem[i*r.memAllocSize+j] = r.mem[i*r.memAllocSize+j+r.magicSamples[i]]
 			}
-			r.magicSamples[i] += oldMagic
+			r.magicSamples[i] += old_magic
 		}
 	}
 }
 
-func (r *SpeexResampler) speexResamplerProcessNative(channelIndex int, inLen int, output []float64, outLen int) (int, int) {
-	N := r.filtLen
-	memPtr := channelIndex * r.memAllocSize
-	ilen := inLen
+func (r *SpeexResampler) speexResamplerMagic(channelIndex int, output []float64, output_ptr *int, outLen int) int {
+	var tmp_in_len = r.magicSamples[channelIndex]
+	var mem_ptr = channelIndex * r.memAllocSize
+	var N = r.filtLen
 
-	outSample, lastSample := r.resamplerFunc(channelIndex, r.mem[memPtr:], ilen, output, outLen)
+	r.speexResamplerProcessNative(channelIndex, &tmp_in_len, output, *output_ptr, &outLen)
 
-	if lastSample < inLen {
-		ilen = lastSample
+	r.magicSamples[channelIndex] -= tmp_in_len
+
+	/* If we couldn't process all "magic" input samples, save the rest for next time */
+	if r.magicSamples[channelIndex] != 0 {
+		var i int
+		for i = mem_ptr; i < r.magicSamples[channelIndex]+mem_ptr; i++ {
+
+			r.mem[N-1+i] = r.mem[N-1+i+tmp_in_len]
+		}
 	}
-	outLen = outSample
-	r.lastSample[channelIndex] -= ilen
 
-	for j := memPtr; j < N-1+memPtr; j++ {
+	*output_ptr += outLen * r.outStride
+	return outLen
+}
+
+func (r *SpeexResampler) speexResamplerProcessNative(channel_index int, in_len *int, output []float64, output_ptr int, out_len *int) {
+	var j = 0
+	var N = r.filtLen
+	var out_sample = 0
+	var mem_ptr = channel_index * r.memAllocSize
+	var ilen int
+
+	r.started = 1
+
+	/* Call the right resampler through the function ptr */
+	out_sample = r.resampler_ptr(channel_index, r.mem, mem_ptr, in_len, output, output_ptr, out_len)
+
+	if r.lastSample[channel_index] < *in_len {
+		*in_len = r.lastSample[channel_index]
+	}
+	*out_len = out_sample
+	r.lastSample[channel_index] -= *in_len
+
+	ilen = *in_len
+
+	for j = mem_ptr; j < N-1+mem_ptr; j++ {
 		r.mem[j] = r.mem[j+ilen]
 	}
-
-	return ilen, outLen
-}
-
-func (r *SpeexResampler) speexResamplerMagic(channelIndex int, output []float64, outLen int) (int, int) {
-	tmpInLen := r.magicSamples[channelIndex]
-	outLen, _ = r.speexResamplerProcessNative(channelIndex, tmpInLen, output, outLen)
-	r.magicSamples[channelIndex] -= tmpInLen
-
-	if r.magicSamples[channelIndex] != 0 {
-		N := r.filtLen
-		memPtr := channelIndex * r.memAllocSize
-		for j := memPtr; j < r.magicSamples[channelIndex]+memPtr; j++ {
-			r.mem[N-1+j] = r.mem[N-1+j+tmpInLen]
-		}
-	}
-
-	return outLen, outLen
 }
 
 // 公共API
-func (r *SpeexResampler) ProcessFloat(channelIndex int, input []float64, inLen int, output []float64, outLen int) (int, int) {
+func (r *SpeexResampler) ProcessFloat(channel_index int, input []float64, input_ptr int, in_len *int, output []float64, output_ptr int, out_len *int) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if channelIndex < 0 || channelIndex >= r.nbChannels {
-		panic("invalid channel index")
+	var j int
+	var ilen = *in_len
+	var olen = *out_len
+	var x = channel_index * r.memAllocSize
+	var filt_offs = r.filtLen - 1
+	var xlen = r.memAllocSize - filt_offs
+	var istride = r.inStride
+
+	if r.magicSamples[channel_index] != 0 {
+		olen -= r.speexResamplerMagic(channel_index, output, &output_ptr, olen)
 	}
 
-	ilen := inLen
-	olen := outLen
-	memPtr := channelIndex * r.memAllocSize
-	filtOffs := r.filtLen - 1
-	xlen := r.memAllocSize - filtOffs
-
-	if r.magicSamples[channelIndex] != 0 {
-		olen, _ = r.speexResamplerMagic(channelIndex, output, olen)
-	}
-
-	if r.magicSamples[channelIndex] == 0 {
-		for ilen > 0 && olen > 0 {
-			ichunk := minInt(ilen, xlen)
-			ochunk := olen
-			var outProcessed, inProcessed int
+	if r.magicSamples[channel_index] == 0 {
+		for ilen != 0 && olen != 0 {
+			var ichunk = ilen
+			if ilen > xlen {
+				ichunk = xlen
+			}
+			//   var ichunk = (ilen > xlen) ? xlen : ilen;
+			var ochunk = olen
 
 			if input != nil {
-				copy(r.mem[memPtr+filtOffs:], input[:ichunk])
+				for j = 0; j < ichunk; j++ {
+					r.mem[x+j+filt_offs] = input[input_ptr+j*istride]
+				}
 			} else {
-				for j := 0; j < ichunk; j++ {
-					r.mem[memPtr+filtOffs+j] = 0
+				for j = 0; j < ichunk; j++ {
+					r.mem[x+j+filt_offs] = 0
 				}
 			}
 
-			inProcessed, outProcessed = r.speexResamplerProcessNative(channelIndex, ichunk, output, ochunk)
-			ilen -= inProcessed
-			olen -= outProcessed
-			output = output[outProcessed:]
+			r.speexResamplerProcessNative(channel_index, &ichunk, output, output_ptr, &ochunk)
+			ilen -= ichunk
+			olen -= ochunk
+			output_ptr += ochunk * r.outStride
 			if input != nil {
-				input = input[ichunk:]
+				input_ptr += ichunk * istride
 			}
 		}
 	}
 
-	return inLen - ilen, outLen - olen
+	*in_len -= ilen
+	*out_len -= olen
 }
 
-func (r *SpeexResampler) ProcessShort(channelIndex int, input []int16, inLen int, output []int16, outLen int) (int, int) {
+func (r *SpeexResampler) ProcessShort(channelIndex int, input []int16, input_ptr int, inLen *int, output []int16, output_ptr int, outLen *int) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if channelIndex < 0 || channelIndex >= r.nbChannels {
-		panic("invalid channel index")
+	var j int
+	var istride_save = r.inStride
+	var ostride_save = r.outStride
+	var ilen = *inLen
+	var olen = *outLen
+	var x = channelIndex * r.memAllocSize
+	var xlen = r.memAllocSize - (r.filtLen - 1)
+	var ylen = fixedStackAlloc
+	if olen < fixedStackAlloc {
+		ylen = olen
 	}
 
-	ilen := inLen
-	olen := outLen
-	memPtr := channelIndex * r.memAllocSize
-	xlen := r.memAllocSize - (r.filtLen - 1)
+	var ystack = make([]float64, ylen)
 
-	ystack := make([]float64, minInt(olen, fixedStackAlloc))
+	r.outStride = 1
 
-	for ilen > 0 && olen > 0 {
-		ichunk := minInt(ilen, xlen)
-		ochunk := minInt(olen, len(ystack))
-		omagic := 0
-		y := 0
+	for ilen != 0 && olen != 0 {
+		var y = 0
+		var ichunk = ilen
+		if ilen > xlen {
+			ichunk = xlen
+		}
+		var ochunk = olen
+		if olen > ylen {
+			ochunk = ylen
+		}
+		//var ichunk = (ilen > xlen) ? xlen : ilen;
+		// var ochunk = (olen > ylen) ? ylen : olen;
+		var omagic = 0
 
 		if r.magicSamples[channelIndex] != 0 {
-			processed, _ := r.speexResamplerMagic(channelIndex, ystack, ochunk)
-			omagic = processed
+			omagic = r.speexResamplerMagic(channelIndex, ystack, &y, ochunk)
 			ochunk -= omagic
 			olen -= omagic
 		}
-
 		if r.magicSamples[channelIndex] == 0 {
 			if input != nil {
-				for j := 0; j < ichunk; j++ {
-					r.mem[memPtr+j+r.filtLen-1] = float64(input[j])
+				for j = 0; j < ichunk; j++ {
+					r.mem[x+j+r.filtLen-1] = float64(input[input_ptr+j*istride_save])
 				}
 			} else {
-				for j := 0; j < ichunk; j++ {
-					r.mem[memPtr+j+r.filtLen-1] = 0
+				for j = 0; j < ichunk; j++ {
+					r.mem[x+j+r.filtLen-1] = 0
 				}
 			}
-
-			_, outProcessed := r.speexResamplerProcessNative(channelIndex, ichunk, ystack[y:], ochunk)
-			ichunk = outProcessed
-			ochunk = outProcessed
+			r.speexResamplerProcessNative(channelIndex, &ichunk, ystack, y, &ochunk)
+		} else {
+			ichunk = 0
+			ochunk = 0
 		}
-
-		for j := 0; j < ochunk+omagic; j++ {
-			output[j] = r.float2int(ystack[j])
+		for j = 0; j < ochunk+omagic; j++ {
+			output[output_ptr+j*ostride_save] = FLOAT2INT(ystack[j])
 		}
 
 		ilen -= ichunk
 		olen -= ochunk
-		output = output[ochunk+omagic:]
+		output_ptr += ((ochunk + omagic) * ostride_save)
 		if input != nil {
-			input = input[ichunk:]
+			input_ptr += ichunk * istride_save
 		}
 	}
 
-	return inLen - ilen, outLen - olen
+	r.outStride = ostride_save
+
+	*inLen -= ilen
+	*outLen -= olen
+}
+func FLOAT2INT(x float64) int16 {
+	if x < math.MinInt16 {
+		return math.MinInt16
+	} else {
+
+		if x > math.MaxInt16 {
+			return math.MaxInt16
+
+		} else {
+			return int16(x)
+		}
+	}
+
 }
 
-func (r *SpeexResampler) ProcessInterleavedFloat(input []float64, inLen int, output []float64, outLen int) (int, int) {
-	origInLen := inLen
-	origOutLen := outLen
-	inStride := r.inStride
-	outStride := r.outStride
+func (r *SpeexResampler) ProcessInterleavedFloat(input []float64, in_len *int, output []float64, out_len *int) {
+	var i int
+	var istride_save, ostride_save int
+	var bak_out_len = *out_len
+	var bak_in_len = *in_len
+	istride_save = r.inStride
+	ostride_save = r.outStride
 	r.inStride = r.nbChannels
 	r.outStride = r.nbChannels
-
-	for i := 0; i < r.nbChannels; i++ {
-		var chanIn, chanOut []float64
+	for i = 0; i < r.nbChannels; i++ {
+		*out_len = bak_out_len
+		*in_len = bak_in_len
 		if input != nil {
-			chanIn = input[i:]
-		}
-		chanOut = output[i:]
-		processedIn, processedOut := r.ProcessFloat(i, chanIn, inLen, chanOut, outLen)
-		if processedIn < inLen {
-			inLen = processedIn
-		}
-		if processedOut < outLen {
-			outLen = processedOut
+			r.ProcessFloat(i, input, i, in_len, output, i, out_len)
+		} else {
+			r.ProcessFloat(i, nil, 0, in_len, output, i, out_len)
 		}
 	}
-
-	r.inStride = inStride
-	r.outStride = outStride
-	return origInLen - inLen, origOutLen - outLen
+	r.inStride = istride_save
+	r.outStride = ostride_save
 }
 
-func (r *SpeexResampler) ProcessInterleavedShort(input []int16, inLen int, output []int16, outLen int) (int, int) {
-	origInLen := inLen
-	origOutLen := outLen
-	inStride := r.inStride
-	outStride := r.outStride
+func (r *SpeexResampler) ProcessInterleavedShort(input []int16, in_len *int, output []int16, out_len *int) {
+	var i int
+	var istride_save, ostride_save int
+	var bak_out_len = *out_len
+	var bak_in_len = *in_len
+	istride_save = r.inStride
+	ostride_save = r.outStride
 	r.inStride = r.nbChannels
 	r.outStride = r.nbChannels
+	for i = 0; i < r.nbChannels; i++ {
 
-	for i := 0; i < r.nbChannels; i++ {
-		var chanIn, chanOut []int16
+		*out_len = bak_out_len
+		*in_len = bak_in_len
 		if input != nil {
-			chanIn = input[i:]
-		}
-		chanOut = output[i:]
-		processedIn, processedOut := r.ProcessShort(i, chanIn, inLen, chanOut, outLen)
-		if processedIn < inLen {
-			inLen = processedIn
-		}
-		if processedOut < outLen {
-			outLen = processedOut
+			r.ProcessShort(i, input, i, in_len, output, i, out_len)
+		} else {
+			r.ProcessShort(i, nil, 0, in_len, output, i, out_len)
 		}
 	}
-
-	r.inStride = inStride
-	r.outStride = outStride
-	return origInLen - inLen, origOutLen - outLen
+	r.inStride = istride_save
+	r.outStride = ostride_save
 }
 
 func (r *SpeexResampler) SkipZeroes() {
@@ -623,32 +678,33 @@ func (r *SpeexResampler) GetRates() (int, int) {
 	return r.inRate, r.outRate
 }
 
-func (r *SpeexResampler) SetRateFraction(ratioNum, ratioDen, inRate, outRate int) {
-	if r.inRate == inRate && r.outRate == outRate && r.numRate == ratioNum && r.denRate == ratioDen {
+func (r *SpeexResampler) SetRateFraction(ratio_num int, ratio_den int, in_rate int, out_rate int) {
+	var fact int
+	var old_den int
+	var i int
+	if r.inRate == in_rate && r.outRate == out_rate && r.numRate == ratio_num && r.denRate == ratio_den {
 		return
 	}
 
-	oldDen := r.denRate
-	r.inRate = inRate
-	r.outRate = outRate
-	r.numRate = ratioNum
-	r.denRate = ratioDen
-
-	// 简化分数
-	gcd := func(a, b int) int {
-		for b != 0 {
-			a, b = b, a%b
+	old_den = r.denRate
+	r.inRate = in_rate
+	r.outRate = out_rate
+	r.numRate = ratio_num
+	r.denRate = ratio_den
+	/* FIXME: This is terribly inefficient, but who cares (at least for now)? */
+	for fact = 2; fact <= inlines.IMIN(r.numRate, r.denRate); fact++ {
+		for (r.numRate%fact == 0) && (r.denRate%fact == 0) {
+			r.numRate /= fact
+			r.denRate /= fact
 		}
-		return a
 	}
 
-	div := gcd(r.numRate, r.denRate)
-	r.numRate /= div
-	r.denRate /= div
+	if old_den > 0 {
 
-	if oldDen > 0 {
-		for i := 0; i < r.nbChannels; i++ {
-			r.sampFracNum[i] = r.sampFracNum[i] * r.denRate / oldDen
+		for i = 0; i < r.nbChannels; i++ {
+
+			r.sampFracNum[i] = r.sampFracNum[i] * r.denRate / old_den
+			/* Safety net */
 			if r.sampFracNum[i] >= r.denRate {
 				r.sampFracNum[i] = r.denRate - 1
 			}
@@ -662,19 +718,6 @@ func (r *SpeexResampler) SetRateFraction(ratioNum, ratioDen, inRate, outRate int
 
 func (r *SpeexResampler) GetRateFraction() (int, int) {
 	return r.numRate, r.denRate
-}
-
-func (r *SpeexResampler) SetQuality(quality int) {
-	if quality > 10 || quality < 0 {
-		panic("quality must be between 0 and 10")
-	}
-	if r.quality == quality {
-		return
-	}
-	r.quality = quality
-	if r.initialised != 0 {
-		r.updateFilter()
-	}
 }
 
 func (r *SpeexResampler) GetQuality() int {
