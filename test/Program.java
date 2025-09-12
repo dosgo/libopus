@@ -21,7 +21,7 @@ public class Program {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-       test();
+       test5();
     }
     
     public static void test()
@@ -206,5 +206,43 @@ public class Program {
         }
 
         return processedValues;
+    }
+
+        public static void test5()
+    {
+       try {
+            FileInputStream fileIn = new FileInputStream("./test1.opus");
+          OpusDecoder decoder = new OpusDecoder(48000, 2);
+
+
+            byte[] inBuf = new byte[161];
+   
+              long start = System.currentTimeMillis();
+              int bytesRead = fileIn.read(inBuf, 0, inBuf.length);
+              
+              short[] pcm = new short[960*2];
+    
+              int samplesDecoded = decoder.decode(inBuf, 0, inBuf.length, pcm, 0, 9600, false);
+            
+              System.out.println("pcm:"+java.util.Arrays.toString(pcm));
+              
+              System.out.println("samplesDecoded:"+samplesDecoded+" pcm:" + Arrays.generateMD5(pcm,960)); 
+            
+                    
+ 
+            
+            
+            
+            long end = System.currentTimeMillis();
+            System.out.println("Time was " + (end - start) + "ms");
+            fileIn.close();
+         
+            System.out.println("Done!");
+             } catch (IOException e) {
+            System.out.println(e.getMessage());
+        } catch (OpusException e) {
+            System.out.println(e.getMessage());
+        }
+    
     }
 }

@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,15 +12,15 @@ import (
 	"os"
 	"time"
 
-	"github.com/dosgo/libopus/comm"
-	"github.com/dosgo/libopus/opus"
+	"github.com/lostromb/concentus/go/comm"
+	"github.com/lostromb/concentus/go/opus"
 )
 
 func main() {
 	go func() {
 		http.ListenAndServe("localhost:6060", nil)
 	}()
-	test3()
+	test5()
 }
 func test() {
 	//Avoid panic
@@ -185,41 +186,29 @@ func BytesToShorts(input []byte, offset, length int) ([]int16, error) {
 	return processedValues, nil
 }
 
-func test3() {
+func test5() {
+	//Avoid panic
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Errorf("decode panic: %v", r)
+		}
+	}()
 
-	fileIn, err := os.Open("48Khz Stereo.raw")
+	decoder, err := opus.NewOpusDecoder(48000, 2)
+
+	inBuf, err := os.ReadFile("test1.opus")
 	if err != nil {
 		panic(err)
 	}
-	defer fileIn.Close()
 
-	var packetSamples = 960
-	inBuf := make([]byte, packetSamples*2*2)
-	data_packet := make([]int16, packetSamples*2)
+	start := time.Now().UnixNano()
 
-	i := 0
-	for {
+	var pcm = make([]int16, 960*2)
 
-		_, err := io.ReadFull(fileIn, inBuf)
-		if err != nil {
-			break
-		}
-		if i > 1 {
-			break
-		}
-		pcm, _ := BytesToShorts(inBuf, 0, len(inBuf))
-
-		fmt.Printf("pcm:%s\r\n", IntSliceToMD5(pcm))
-		fmt.Printf("pcm:%+v\r\n", (pcm))
-
-		var resampler = comm.NewSpeexResampler(2, 48000, 88200, 10)
-
-		var inputLen = len(pcm)
-		var outLen = len(data_packet)
-		resampler.ProcessShort(0, pcm, 0, &inputLen, data_packet, 0, &outLen)
-		fmt.Printf("outLen:%d data_packet:%s \r\n", outLen, IntSliceToMD5(data_packet))
-		fmt.Printf("data_packet:%+v\r\n", (data_packet))
-		i++
-	}
-
+	_len, err := decoder.Decode(inBuf, 0, len(inBuf), pcm, 0, len(pcm), false)
+	pcmstr, _ := json.Marshal(pcm)
+	fmt.Printf("pcm:%s", pcmstr)
+	fmt.Printf("len :%d pcm:%s\r\n", _len, IntSliceToMD5(pcm[:_len]))
+	elapsed := time.Duration(time.Now().UnixNano() - start)
+	fmt.Printf("Time was: %+v ms\n", float64(elapsed)/1e6)
 }
