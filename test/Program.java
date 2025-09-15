@@ -3,6 +3,9 @@ package org.concentus;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+
 import org.concentus.*;
 
 
@@ -211,30 +214,63 @@ public class Program {
         public static void test5()
     {
        try {
-            FileInputStream fileIn = new FileInputStream("./test1.opus");
+            FileInputStream fileIn = new FileInputStream("./testnew.opus");
           OpusDecoder decoder = new OpusDecoder(48000, 2);
 
 
-            byte[] inBuf = new byte[161];
-   
-              long start = System.currentTimeMillis();
-              int bytesRead = fileIn.read(inBuf, 0, inBuf.length);
-              
-              short[] pcm = new short[960*2];
+            byte[] inBuf = new byte[960*20];
+            int i=0;
+                while (true) {
+            
+
+
+                 byte[] lengthBytes = new byte[4];
+                int bytesReadLen = fileIn.read(lengthBytes);
+                
+                if (bytesReadLen != 4) {
+                   return ;
+                }
+                
+                // 2. 将长度前缀转换为整数（大端序）
+                int dataLength = ByteBuffer.wrap(lengthBytes)
+                        .order(ByteOrder.LITTLE_ENDIAN)
+                        .getInt();
+                
+                
     
-              int samplesDecoded = decoder.decode(inBuf, 0, inBuf.length, pcm, 0, 9600, false);
-            
-              System.out.println("pcm:"+java.util.Arrays.toString(pcm));
-              
-              System.out.println("samplesDecoded:"+samplesDecoded+" pcm:" + Arrays.generateMD5(pcm,960)); 
-            
+
+                int bytesRead = fileIn.read(inBuf, 0, dataLength);
+                   byte[] partial = java.util.Arrays.copyOfRange(inBuf, 0, Math.min(bytesRead, inBuf.length));
+                System.out.printf("inBuf:%s\r\n", java.util.Arrays.toString(partial));
+                
+                short[] pcm = new short[960*2];
+                if (i == 4) {
+			        Arrays.debug = true;
+		        }
+
+                int samplesDecoded = decoder.decode(inBuf, 0, bytesRead, pcm, 0, 9600, false);
+                
+            //     System.out.println("pcm:"+java.util.Arrays.toString(pcm));
+
+                  short[] pcmout=new short[samplesDecoded];
+                  System.arraycopy(pcm, 0, pcmout, 0, samplesDecoded);
+
+                System.out.printf("pcm:%s\r\n", java.util.Arrays.toString(pcmout));
+
+                
+                System.out.println("i:"+i+"len:"+samplesDecoded+"pcm:" + Arrays.generateMD5(pcm,samplesDecoded)); 
+                if(fileIn.available() < inBuf.length){
+                    break;
+                }
+                i++;
                     
- 
+                if(i>4){
+                    break;
+                }
+            }
             
             
-            
-            long end = System.currentTimeMillis();
-            System.out.println("Time was " + (end - start) + "ms");
+
             fileIn.close();
          
             System.out.println("Done!");

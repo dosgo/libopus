@@ -194,21 +194,47 @@ func test5() {
 		}
 	}()
 
-	decoder, err := opus.NewOpusDecoder(48000, 2)
-
-	inBuf, err := os.ReadFile("test1.opus")
+	decoder, _ := opus.NewOpusDecoder(48000, 2)
+	fileIn, err := os.Open("testnew.opus")
 	if err != nil {
 		panic(err)
 	}
+	i := 0
+	for {
 
-	start := time.Now().UnixNano()
+		lengthBuf := make([]byte, 4)
+		if _, err := io.ReadFull(fileIn, lengthBuf); err != nil {
+			return
+		}
 
-	var pcm = make([]int16, 960*2)
+		// 2. 将长度前缀转换为uint32
+		length := binary.LittleEndian.Uint32(lengthBuf)
 
-	_len, err := decoder.Decode(inBuf, 0, len(inBuf), pcm, 0, len(pcm), false)
-	pcmstr, _ := json.Marshal(pcm)
-	fmt.Printf("pcm:%s", pcmstr)
-	fmt.Printf("len :%d pcm:%s\r\n", _len, IntSliceToMD5(pcm[:_len]))
-	elapsed := time.Duration(time.Now().UnixNano() - start)
-	fmt.Printf("Time was: %+v ms\n", float64(elapsed)/1e6)
+		inBuf := make([]byte, length)
+
+		_, err := io.ReadFull(fileIn, inBuf)
+		if err != nil {
+			break
+		}
+
+		var pcm = make([]int16, 960*9)
+		fmt.Printf("inBuf:%+v\r\n", inBuf[:length])
+		if i == 4 {
+			comm.Debug = true
+		}
+
+		_len, err := decoder.Decode(inBuf, 0, len(inBuf), pcm, 0, len(pcm), false)
+		if err == nil {
+			sss, _ := json.Marshal(pcm[:_len])
+			fmt.Printf("outPcm:%s\r\n", sss)
+			fmt.Printf("i:%d len:%d pcm:%s\r\n", i, _len, IntSliceToMD5(pcm[:_len]))
+		} else {
+			fmt.Printf("err:%+v\r\n", err)
+		}
+		i++
+		if i > 4 {
+			break
+		}
+	}
+
 }
