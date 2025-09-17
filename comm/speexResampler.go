@@ -1,7 +1,6 @@
 package comm
 
 import (
-	"fmt"
 	"math"
 	"sync"
 )
@@ -321,7 +320,6 @@ func (r *SpeexResampler) updateFilter() {
 		}
 
 		r.resampler_ptr = r.resamplerBasicDirectSingle
-		fmt.Printf("resamplerBasicDirectSingle\r\n")
 
 		/*fprintf (stderr, "resampler uses direct sinc table and normalised cutoff %f\n", cutoff);*/
 	} else {
