@@ -20,7 +20,7 @@ func main() {
 	go func() {
 		http.ListenAndServe("localhost:6060", nil)
 	}()
-	test5()
+	test()
 }
 func test() {
 	//Avoid panic
@@ -31,7 +31,7 @@ func test() {
 	}()
 	encoder, err := opus.NewOpusEncoder(48000, 2, opus.OPUS_APPLICATION_AUDIO)
 	encoder.SetBitrate(96000)
-	encoder.SetForceMode(opus.MODE_CELT_ONLY)
+	encoder.SetForceMode(opus.MODE_SILK_ONLY)
 	encoder.SetSignalType(opus.OPUS_SIGNAL_MUSIC)
 	encoder.SetComplexity(0)
 
@@ -52,14 +52,14 @@ func test() {
 		if err != nil {
 			break
 		}
-		if i > 1000 {
+		if i > 1 {
 			break
 		}
 		pcm, _ := BytesToShorts(inBuf, 0, len(inBuf))
 
 		fmt.Printf("imput md5:%s\r\n", ByteSliceToMD5(inBuf))
 		if i == 0 {
-			comm.Debug = false
+			comm.Debug = true
 		} else {
 			comm.Debug = false
 
